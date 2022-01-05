@@ -18,6 +18,7 @@ NOT_REVERSE_DATAFRAME = -1
 
 
 def config(api_key: str):
+    global API_KEY
     API_KEY = api_key
 
 

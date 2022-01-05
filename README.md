@@ -5,7 +5,7 @@
 ## Installation
 
 ```bash
-pip install "git+https://github.com/lolipopshock/notion-df.git@v0.0.1#egg=notion-df"
+pip install "git+https://github.com/lolipopshock/notion-df.git#egg=notion-df"
 ```
 
 ## Usage

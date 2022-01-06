@@ -25,7 +25,7 @@ setup(
     description="Notion-DF: Seamlessly Connecting Notion Database with Pandas DataFrame",
     author="Zejiang Shen",
     author_email="zejiangshen@gmail.com",
-    license="Apache-2.0",
+    license="MIT",
     url="https://github.com/lolipopshock/notion-df",
     package_dir={"": "src"},
     packages=find_packages("src"),

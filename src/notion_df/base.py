@@ -2,12 +2,11 @@ from typing import List, Dict, Optional
 import re
 from enum import Enum
 from pydantic import BaseModel, validator
+import pandas as pd
+
+from notion_df.utils import is_time_string
 
 ### All colors supported in NOTION
-
-ISO8601_REGEX = r"^(-?(?:[1-9][0-9]*)?[0-9]{4})-(1[0-2]|0[1-9])-(3[01]|0[1-9]|[12][0-9])T(2[0-3]|[01][0-9]):([0-5][0-9]):([0-5][0-9])(\.[0-9]+)?(Z|[+-](?:2[0-3]|[01][0-9]):[0-5][0-9])?$"
-# See https://stackoverflow.com/questions/41129921/validate-an-iso-8601-datetime-string-in-python
-
 
 class NotionColorEnum(str, Enum):
     Default = "default"
@@ -119,6 +118,7 @@ class RollUpProperty(BaseModel):
     function: str
     # TODO: Change this to ENUM https://developers.notion.com/reference/create-a-database#rollup-configuration
 
+
 class FormulaProperty(BaseModel):
     expression: str
 
@@ -127,23 +127,26 @@ class RelationProperty(BaseModel):
     database_id: str
     # TODO: Change this to UUID validation
 
+
 class Date(BaseModel):
-    start: str
+    start: Optional[str] = None
     end: Optional[str] = None
     time_zone: Optional[str] = None
 
     @validator("start")
-    def title_is_empty_dict(cls, v):
-        if re.match(ISO8601_REGEX, v) is None:
-            raise ValueError(
-                "The data start is not appropriately formatted as an ISO 8601 date string."
-            )
+    def is_start_ISO8601(cls, v):
+        #TODO: Currently it cannot suport time ranges 
+        if v is not None:
+            if not is_time_string(v):
+                raise ValueError(
+                    "The data start is not appropriately formatted as an ISO 8601 date string."
+                )
         return v
 
     @validator("end")
-    def title_is_empty_dict(cls, v):
+    def is_end_ISO8601(cls, v):
         if v is not None:
-            if re.match(ISO8601_REGEX, v) is None:
+            if not is_time_string(v):
                 raise ValueError(
                     "The data end is not appropriately formatted as an ISO 8601 date string."
                 )
@@ -154,3 +157,8 @@ class Date(BaseModel):
         return cls(start=value)
         # TODO: Now we assume the value has already been formated as strings
         # But we should parse them into appropriate formats.
+
+    @property
+    def value(self):
+        return pd.to_datetime(self.start)
+        # TODO: what should the data structure be if self.end is not None?

@@ -13,8 +13,19 @@ from pandas.api.types import (
     is_list_like,
 )
 
-from notion_df.base import SelectOptions, NumberFormat, RollUpProperty, FormulaProperty, RelationProperty
-from notion_df.utils import flatten_dict, ISO8601_STRFTIME_TRANSFORMER
+from notion_df.base import (
+    SelectOptions,
+    NumberFormat,
+    RollUpProperty,
+    FormulaProperty,
+    RelationProperty,
+)
+from notion_df.utils import (
+    flatten_dict,
+    SECURE_STR_TRANSFORM,
+    SECURE_BOOL_TRANSFORM,
+    SECURE_TIME_TRANSFORM,
+)
 
 
 class BasePropertyConfig(BaseModel):
@@ -24,9 +35,18 @@ class BasePropertyConfig(BaseModel):
     def query_dict(self):
         return flatten_dict(self.dict())
 
+    @validator("type")
+    def automatically_set_type_value(cls, v):
+        _type = list(cls.__fields__.keys())[-1]
+        if v is None:
+            return _type
+        else:
+            assert _type == v, f"{_type} != {v}"
+            return _type
+
 
 class TitleConfig(BasePropertyConfig):
-    title: Dict
+    title: Dict = {}
 
     # TODO: Make the validator automatically geneerated
     @validator("title")
@@ -37,7 +57,7 @@ class TitleConfig(BasePropertyConfig):
 
 
 class RichTextConfig(BasePropertyConfig):
-    rich_text: Dict
+    rich_text: Dict = {}
 
     @validator("rich_text")
     def title_is_empty_dict(cls, v):
@@ -61,7 +81,7 @@ class MultiSelectConfig(BasePropertyConfig):
 
 
 class DateConfig(BasePropertyConfig):
-    date: Dict
+    date: Dict = {}
 
     @validator("date")
     def title_is_empty_dict(cls, v):
@@ -71,7 +91,7 @@ class DateConfig(BasePropertyConfig):
 
 
 class PeopleConfig(BasePropertyConfig):
-    people: Dict
+    people: Dict = {}
 
     @validator("people")
     def title_is_empty_dict(cls, v):
@@ -81,7 +101,7 @@ class PeopleConfig(BasePropertyConfig):
 
 
 class FilesConfig(BasePropertyConfig):
-    files: Dict
+    files: Dict = {}
 
     @validator("files")
     def title_is_empty_dict(cls, v):
@@ -91,7 +111,7 @@ class FilesConfig(BasePropertyConfig):
 
 
 class CheckboxConfig(BasePropertyConfig):
-    checkbox: Dict
+    checkbox: Dict = {}
 
     @validator("checkbox")
     def title_is_empty_dict(cls, v):
@@ -101,7 +121,7 @@ class CheckboxConfig(BasePropertyConfig):
 
 
 class URLConfig(BasePropertyConfig):
-    url: Dict
+    url: Dict = {}
 
     @validator("url")
     def title_is_empty_dict(cls, v):
@@ -111,7 +131,7 @@ class URLConfig(BasePropertyConfig):
 
 
 class EmailConfig(BasePropertyConfig):
-    email: Dict
+    email: Dict = {}
 
     @validator("email")
     def title_is_empty_dict(cls, v):
@@ -121,7 +141,7 @@ class EmailConfig(BasePropertyConfig):
 
 
 class PhoneNumberConfig(BasePropertyConfig):
-    phone_number: Dict
+    phone_number: Dict = {}
 
     @validator("phone_number")
     def title_is_empty_dict(cls, v):
@@ -143,7 +163,7 @@ class RollupConfig(BasePropertyConfig):
 
 
 class CreatedTimeConfig(BasePropertyConfig):
-    created_time: Dict
+    created_time: Dict = {}
 
     @validator("created_time")
     def title_is_empty_dict(cls, v):
@@ -153,7 +173,7 @@ class CreatedTimeConfig(BasePropertyConfig):
 
 
 class CreatedByConfig(BasePropertyConfig):
-    created_by: Dict
+    created_by: Dict = {}
 
     @validator("created_by")
     def title_is_empty_dict(cls, v):
@@ -163,7 +183,7 @@ class CreatedByConfig(BasePropertyConfig):
 
 
 class LastEditedTimeConfig(BasePropertyConfig):
-    last_edited_time: Dict
+    last_edited_time: Dict = {}
 
     @validator("last_edited_time")
     def title_is_empty_dict(cls, v):
@@ -173,7 +193,7 @@ class LastEditedTimeConfig(BasePropertyConfig):
 
 
 class LastEditedByConfig(BasePropertyConfig):
-    last_edited_by: Dict
+    last_edited_by: Dict = {}
 
     @validator("last_edited_by")
     def title_is_empty_dict(cls, v):
@@ -199,6 +219,58 @@ def parse_single_config(data: Dict) -> BasePropertyConfig:
     return parse_obj_as(CONFIGS_MAPPING[data["type"]], data)
 
 
+CONFIGS_DF_TRANSFORMER = {
+    "title": SECURE_STR_TRANSFORM,
+    "rich_text": SECURE_STR_TRANSFORM,
+    "number": None,
+    "select": SECURE_STR_TRANSFORM,
+    "multi_select": lambda lst: [str(ele) for ele in lst] if is_list_like(lst) else str(lst),
+    "date": SECURE_TIME_TRANSFORM,
+    "checkbox": SECURE_BOOL_TRANSFORM,
+    ### TODO: check the following ###
+    "people": SECURE_STR_TRANSFORM,
+    "files": SECURE_STR_TRANSFORM,
+    "url": SECURE_STR_TRANSFORM,
+    "email": SECURE_STR_TRANSFORM,
+    "phone_number": SECURE_STR_TRANSFORM,
+    "formula": SECURE_STR_TRANSFORM,
+    "relation": SECURE_STR_TRANSFORM,
+    "rollup": SECURE_STR_TRANSFORM,
+    "created_time": SECURE_STR_TRANSFORM,
+    "created_by": SECURE_STR_TRANSFORM,
+    "last_edited_time": SECURE_STR_TRANSFORM,
+    "last_edited_by": SECURE_STR_TRANSFORM,
+}
+
+
+def _infer_series_config(column: "pd.Series") -> BasePropertyConfig:
+    dtype = column.dtype
+
+    if is_object_dtype(dtype):
+        if all(is_list_like(ele) for ele in column):
+            all_possible_values = set(
+                list(itertools.chain.from_iterable(column.to_list()))
+            )
+            all_possible_values = [str(ele) for ele in all_possible_values]
+            return MultiSelectConfig(
+                multi_select=SelectOptions.from_value(all_possible_values),
+            )
+        else:
+            return RichTextConfig()
+    if is_numeric_dtype(dtype):
+        return NumberConfig(number=NumberFormat(format="number"))
+    if is_bool_dtype(dtype):
+        return CheckboxConfig()
+    if is_categorical_dtype(dtype):
+        return SelectConfig(
+            select=SelectOptions.from_value([str for cat in dtype.categories]),
+        )
+    if is_datetime64_any_dtype(dtype):
+        return DateConfig()
+
+    return None
+
+
 @dataclass
 class DatabaseSchema:
 
@@ -216,70 +288,44 @@ class DatabaseSchema:
     def query_dict(self) -> Dict:
         return {key: config.query_dict() for key, config in self.configs.items()}
 
+    @classmethod
+    def from_df(
+        cls, df: "pd.DataFrame", title_col: Optional[str] = None
+    ) -> "DatabaseSchema":
+        """Automatically infer the schema from a pandas dataframe"""
+        df = df.infer_objects()
 
-def guess_column_dtype(
-    column: "pd.Series", column_index: int
-) -> Optional[Tuple[BasePropertyConfig, Optional[Callable]]]:
+        configs = {}
+        for col in df.columns:
+            config = _infer_series_config(df[col])
+            configs[col] = config
 
-    if column_index == 0:
-        # By default, the first column is the title
-        return TitleConfig(type="title", title={}), str
-
-    dtype = column.dtype
-
-    if is_object_dtype(dtype):
-        if all(is_list_like(ele) for ele in column):
-            all_possible_values = set(
-                list(itertools.chain.from_iterable(column.to_list()))
-            )
-            all_possible_values = [str(ele) for ele in all_possible_values]
-            return (
-                MultiSelectConfig(
-                    type="multi_select",
-                    multi_select=SelectOptions.from_value(all_possible_values),
-                ),
-                lambda lst: [str(ele) for ele in lst],
-            )
+        if title_col is not None:
+            configs[title_col] = TitleConfig()
         else:
-            return RichTextConfig(type="rich_text", rich_text={}), str
-    if is_numeric_dtype(dtype):
-        return NumberConfig(type="number", number=NumberFormat(format="number")), None
-    if is_bool_dtype(dtype):
-        return CheckboxConfig(type="checkbox", checkbox={}), None
-    if is_categorical_dtype(dtype):
-        return (
-            SelectConfig(
-                type="select",
-                select=SelectOptions.from_value([str for cat in dtype.categories]),
-            ),
-            lambda ele: str(ele),
-        )
-    if is_datetime64_any_dtype(dtype):
-        return DateConfig(type="date", date={}), ISO8601_STRFTIME_TRANSFORMER
+            configs[df.columns[0]] = TitleConfig()
+        
+        return cls(configs)
 
-    return None, None
+    def is_df_compatible(self, df: "pd.DataFrame") -> bool:
+        """Validate the dataframe against the schema"""
 
+        if hasattr(df, "schema"):
+            if not df.schema == self:
+                return False
+        else:
+            for col in df.columns:
+                if col not in self.configs.keys():
+                    return False
 
-def guess_align_schema_for_df(
-    df: "pd.DataFrame",
-) -> Tuple["pd.DataFrame", DatabaseSchema]:
-    # TODO: rethink how to wrap the "align" part: whether
-    # it should be implemented when actually uploading the data?
+        # TODO: Add more advanced check on datatypes
+        return True
 
-    df = df.infer_objects().reset_index()
-
-    configs = {}
-    for idx, col in enumerate(df.columns):
-        config, transformer = guess_column_dtype(df[col], idx)
-
-        if config is None:
-            warnings.warn(
-                f"Column {col} is not recognized as a column type that can be uploaded to notion."
-            )
-            continue
-
-        configs[col] = config
-        if transformer is not None:
-            df[col] = df[col].apply(transformer)
-
-    return df, DatabaseSchema(configs)
+    def transform(self, df: "pd.DataFrame") -> "pd.DataFrame":
+        """Transform the df such that the data values are compatible with the schema"""
+        df = df.copy()
+        for col in df.columns:
+            transform = CONFIGS_DF_TRANSFORMER[self[col].type]
+            if transform is not None:
+                df[col] = df[col].apply(transform)
+        return df

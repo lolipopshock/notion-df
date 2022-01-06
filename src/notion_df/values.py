@@ -7,9 +7,11 @@ import numbers
 
 from pydantic import BaseModel, parse_obj_as
 import pandas as pd
+from pandas.api.types import is_array_like
 
 from notion_df.base import RichText, SelectOption, Date
 from notion_df.utils import flatten_dict
+
 
 class BasePropertyValues(BaseModel):
     id: Optional[str]  # TODO: Rethink whether we can do this
@@ -108,7 +110,7 @@ class DateValues(BasePropertyValues):
 
     @property
     def value(self) -> str:
-        return self.date.start if self.date else None
+        return self.date.value if self.date else None
 
     @classmethod
     def from_value(cls, value: str):
@@ -232,17 +234,23 @@ def _guess_value_schema(val: Any) -> object:
 
 
 def _is_item_empty(item):
-    if isinstance(item, Iterable) and not isinstance(item, str):
-        return item == [] or pd.isna(item).any()
-    else:
-        return item is None or pd.isna(item)
+
+    if item is None or item == []:
+        return True
+
+    isna = pd.isna(item)
+    if is_array_like(isna):
+        isna = isna.all()
+        # TODO: Rethink it is all or any
+
+    return isna
 
 
 def parse_value_with_schema(
     idx: int, key: str, value: Any, schema: "DatabaseSchema"
 ) -> BasePropertyValues:
-    #TODO: schema shouldn't be allowed to be empty in the future version
-    # schema should be determined at the dataframe level. 
+    # TODO: schema shouldn't be allowed to be empty in the future version
+    # schema should be determined at the dataframe level.
 
     if schema is not None:
         value_func = VALUES_MAPPING[schema[key].type]

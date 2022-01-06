@@ -7,7 +7,7 @@ from notion_client import Client
 from notion_client.helpers import get_id
 
 from notion_df.values import PageProperties, PageProperty
-from notion_df.configs import DatabaseSchema, guess_align_schema_for_df
+from notion_df.configs import DatabaseSchema
 
 API_KEY = None
 NOT_REVERSE_DATAFRAME = -1
@@ -120,12 +120,18 @@ def upload(
     schema=None,
     mode="a",
     title: str = "",
+    title_col: str = "",
     *,
     api_key: str = None,
     client: Client = None,
 ):
+    if schema is None:
+        if hasattr(df, "schema"):
+            schema = df.schema
+
     if not _is_notion_database(notion_url):
-        df, schema = guess_align_schema_for_df(df)
+        if schema is None:
+            schema = DatabaseSchema.from_df(df, title_col = title_col)
         database_properties = create_database(get_id(notion_url), client, schema, title)
         databse_id = database_properties['id']
         notion_url = database_properties['url']
@@ -137,12 +143,16 @@ def upload(
     # At this stage, we should have the appropriate schema
     assert schema is not None
 
-    validate_df_with_schema(df, schema)
+    if not schema.is_df_compatible(df):
+        raise ValueError("The dataframe is not compatible with the database schema."
+                         "The df contains columns that are not in the databse: " +
+                         f"{[col for col in df.columns if col not in schema.configs.keys()]}")
 
     if mode not in ("a", "append"):
         raise NotImplementedError
         # TODO: clean the current values in the notion database (if any)
 
+    df = schema.transform(df)
     upload_to_database(df, databse_id, schema, client)
     
     print(f"Your dataframe has been uploaded to the Notion page: {notion_url} .")

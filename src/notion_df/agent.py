@@ -1,5 +1,6 @@
 from typing import List, Dict, Optional
 from datetime import datetime
+import warnings
 import os
 from functools import wraps
 
@@ -74,27 +75,35 @@ def load(notion_url: str, *, api_key: str = None, client: Client = None):
     return df
 
 
-def create_database(page_id:str, client: Client, schema:DatabaseSchema, title:str=""):
+def create_database(
+    page_id: str, client: Client, schema: DatabaseSchema, title: str = ""
+):
     response = client.databases.create(
-            parent={"type": "page_id", "page_id": page_id},
-            title=[{"type": "text", "text": {"content": title}}],
-            properties=schema.query_dict(),
-        )
-    assert response['object'] == 'database'
+        parent={"type": "page_id", "page_id": page_id},
+        title=[{"type": "text", "text": {"content": title}}],
+        properties=schema.query_dict(),
+    )
+    assert response["object"] == "database"
     return response
-    
+
 
 def upload_row_to_database(row, database_id, schema, client):
-    
+
     properties = PageProperty.from_series(row, schema).query_dict()
-    client.pages.create(
-            parent={"database_id": database_id}, properties=properties
-        )
+    client.pages.create(parent={"database_id": database_id}, properties=properties)
 
 
-def upload_to_database(df, databse_id, schema, client):
+def upload_to_database(df, databse_id, schema, client, errors):
     for _, row in df[::NOT_REVERSE_DATAFRAME].iterrows():
-        upload_row_to_database(row, databse_id, schema, client)
+        try:
+            upload_row_to_database(row, databse_id, schema, client)
+        except Exception as e:
+            if errors == "strict":
+                raise e
+            elif errors == "warn":
+                warnings.warn(f"Encountered errors {e} while uploading row: {row}")
+            elif errors == "ignore":
+                continue
 
 
 def load_database_schema(database_id, client):
@@ -103,38 +112,71 @@ def load_database_schema(database_id, client):
     )
 
 
-def validate_df_with_schema(df, schema):
-    if hasattr(df, "schema"):
-        assert df.schema == schema
-    else:
-        for col in df.columns:
-            assert col in schema.configs.keys()
-            # When DF doesn't have a schema, we just ensure that their
-            # column names appear in the schema
-
-
 @use_client
 def upload(
     df: "pd.DataFrame",
     notion_url: str,
-    schema=None,
-    mode="a",
+    schema: DatabaseSchema = None,
+    mode: str = "a",
     title: str = "",
     title_col: str = "",
+    errors: str = "strict",
     *,
     api_key: str = None,
     client: Client = None,
 ):
+    """Upload a dataframe to the specified Notion database.
+
+    Args:
+        df (pd.DataFrame):
+            The dataframe to upload.
+        notion_url (str):
+            The URL of the Notion page to upload to.
+            If it is a notion page, then it will create a new database
+            under that page and upload the dataframe to it.
+        schema (DatabaseSchema, optional):
+            The schema of the Notion database.
+            When not set, it will be inferred from (1) the target
+            notion database (if it is) then (2) the dataframe itself.
+        mode (str, optional):
+            (the function is not supported yet.)
+            Whether to append to the database or overwrite.
+            Defaults to "a".
+        title (str, optional):
+            The title of the Notion database.
+            Defaults to "".
+        title_col (str, optional):
+            Every Notion database requires a "title" column.
+            When the schema is not set, by default it infers the first
+            column of uploaded dataframe as the title column. You can
+            set this value to specify the title column.
+            Defaults to "".
+        errors (str, optional):
+            Since we upload the dataframe to Notion row by row, you
+            can specify how to handle errors during uploading. There
+            are several options:
+                1. "strict": raise an error when there is one.
+                2. "ignore": ignore errors and continue uploading
+                    subsequent rows.
+                3. "warn": print the error message and continue uploading
+            Defaults to "strict".
+        api_key (str, optional):
+            The API key of the Notion integration.
+            Defaults to None.
+        client (Client, optional):
+            The notion client.
+            Defaults to None.
+    """
     if schema is None:
         if hasattr(df, "schema"):
             schema = df.schema
 
     if not _is_notion_database(notion_url):
         if schema is None:
-            schema = DatabaseSchema.from_df(df, title_col = title_col)
+            schema = DatabaseSchema.from_df(df, title_col=title_col)
         database_properties = create_database(get_id(notion_url), client, schema, title)
-        databse_id = database_properties['id']
-        notion_url = database_properties['url']
+        databse_id = database_properties["id"]
+        notion_url = database_properties["url"]
     else:
         databse_id = get_id(notion_url)
         if schema is None:
@@ -144,16 +186,18 @@ def upload(
     assert schema is not None
 
     if not schema.is_df_compatible(df):
-        raise ValueError("The dataframe is not compatible with the database schema."
-                         "The df contains columns that are not in the databse: " +
-                         f"{[col for col in df.columns if col not in schema.configs.keys()]}")
+        raise ValueError(
+            "The dataframe is not compatible with the database schema."
+            "The df contains columns that are not in the databse: "
+            + f"{[col for col in df.columns if col not in schema.configs.keys()]}"
+        )
 
     if mode not in ("a", "append"):
         raise NotImplementedError
         # TODO: clean the current values in the notion database (if any)
 
     df = schema.transform(df)
-    upload_to_database(df, databse_id, schema, client)
-    
+    upload_to_database(df, databse_id, schema, client, errors)
+
     print(f"Your dataframe has been uploaded to the Notion page: {notion_url} .")
     return notion_url

@@ -33,4 +33,10 @@ setup(
     long_description_content_type="text/markdown",
     python_requires=">=3.6",
     install_requires=get_requirements("requirements.txt"),
+    extras_require={
+        "dev": [
+            "black==21.12b0",
+            "pytest",
+        ],
+    }
 )

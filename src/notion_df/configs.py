@@ -35,7 +35,7 @@ class BasePropertyConfig(BaseModel):
     def query_dict(self):
         return flatten_dict(self.dict())
 
-    @validator("type")
+    @validator("type", always=True)
     def automatically_set_type_value(cls, v):
         _type = list(cls.__fields__.keys())[-1]
         if v is None:

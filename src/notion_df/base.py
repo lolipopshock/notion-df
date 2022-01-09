@@ -96,6 +96,12 @@ class SelectOption(BaseModel):
     @classmethod
     def from_value(cls, value: str):
         return cls(name=value)
+    
+    @validator("name")
+    def name_cannot_contain_comma(cls, v):
+        if "," in v:
+            raise ValueError(f"Invalid option name {v} that contains comma")
+        return v
 
 
 class SelectOptions(BaseModel):

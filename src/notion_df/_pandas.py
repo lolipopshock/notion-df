@@ -1,11 +1,30 @@
+from typing import Optional
 from notion_df import upload, download
 
 
 def read_notion(
     notion_url: str,
+    nrows: Optional[int] = None,
     api_key: str = None,
-):
-    return download(notion_url, api_key=api_key)
+) -> "pd.DataFrame":
+    """Download a Notion database as a pandas DataFrame.
+
+    Args:
+        notion_url (str):
+            The URL of the Notion database to download from.
+        nrows (int, optional):
+            Number of rows of file to read. Useful for reading
+            pieces of large files.
+        api_key (str, optional):
+            The API key of the Notion integration.
+            Defaults to None.
+        client (Client, optional):
+            The notion client.
+            Defaults to None.
+    Returns:
+        pd.DataFrame: the loaded dataframe.
+    """
+    return download(notion_url, nrows=nrows, api_key=api_key)
 
 
 def to_notion(

@@ -30,6 +30,14 @@ pip install notion-df
     # Equivalent to: df = pd.read_notion(notion_database_url, api_key=api_key)
     df.head()
     ```
+    <details>
+    <summary>Only downloading the first `nrows` from a database</summary>
+    
+    ```python
+    df = notion_df.download(notion_database_url, nrows=nrows) #e.g., 10
+    ```
+
+    </details>
 
 - Append a local `df` to a Notion database:
 

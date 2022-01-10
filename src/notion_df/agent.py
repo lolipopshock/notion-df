@@ -16,6 +16,8 @@ NOT_REVERSE_DATAFRAME = -1
 # for some reason, notion will reverse the order of dataframe
 # when uploading.
 # -1 for reversing, for not reversing
+NOTION_DEFAULT_PAGE_SIZE = 100
+NOTION_MAX_PAGE_SIZE = 100
 
 
 def config(api_key: str):
@@ -56,16 +58,79 @@ def use_client(func):
     return wrapper
 
 
+def query_database(
+    database_id: str,
+    client: Client,
+    start_cursor: Optional[str] = None,
+    page_size: int = NOTION_DEFAULT_PAGE_SIZE,
+):
+    query_dict = {"database_id": database_id, "page_size": page_size}
+    if start_cursor is not None:
+        query_dict["start_cursor"] = start_cursor
+        # For now, Notion API doesn't allow start_cursor='null'
+
+    query_results = client.databases.query(**query_dict)
+
+    assert query_results["object"] == "list"
+    return query_results
+
+
 @use_client
-def load(notion_url: str, *, api_key: str = None, client: Client = None):
+def download(
+    notion_url: str,
+    nrows: Optional[int] = None,
+    *,
+    api_key: str = None,
+    client: Client = None,
+) -> "pd.DataFrame":
+    """Download a Notion database as a pandas DataFrame.
+
+    Args:
+        notion_url (str): 
+            The URL of the Notion database to download from.
+        nrows (int, optional): 
+            Number of rows of file to read. Useful for reading 
+            pieces of large files.
+        api_key (str, optional):
+            The API key of the Notion integration.
+            Defaults to None.
+        client (Client, optional):
+            The notion client.
+            Defaults to None.
+    Returns:
+        pd.DataFrame: the loaded dataframe.
+    """
     assert _is_notion_database(notion_url)
     database_id = get_id(notion_url)
 
-    query_results = client.databases.query(database_id=database_id)
-    assert query_results["object"] == "list"
-    properties = PageProperties.from_raw(
-        query_results["results"]
-    )  # TODO: handle pagination
+    downloaded_rows = []
+
+    page_size = NOTION_MAX_PAGE_SIZE
+    if nrows is not None:
+        if nrows <= NOTION_MAX_PAGE_SIZE:
+            page_size = nrows    
+
+    query_results = query_database(database_id, client, page_size=page_size)
+    downloaded_rows.extend(query_results["results"])
+
+    while query_results["has_more"]:
+        if nrows is not None:
+            if len(downloaded_rows) >= nrows:
+                break
+            else:
+                page_size = nrows - len(downloaded_rows)
+        else:
+            page_size = NOTION_MAX_PAGE_SIZE
+
+        query_results = query_database(
+            database_id,
+            client,
+            start_cursor=query_results["next_cursor"],
+            page_size=page_size,
+        )
+        downloaded_rows.extend(query_results["results"])
+
+    properties = PageProperties.from_raw(downloaded_rows)
 
     retrieve_results = client.databases.retrieve(database_id=database_id)
     schema = DatabaseSchema.from_raw(retrieve_results["properties"])

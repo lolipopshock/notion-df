@@ -26,7 +26,7 @@ pip install notion-df
 - Download your Notion table as a pandas DataFrame
     ```python
     import notion_df
-    df = notion_df.load(notion_database_url, api_key=api_key)
+    df = notion_df.download(notion_database_url, api_key=api_key)
     # Equivalent to: df = pd.read_notion(notion_database_url, api_key=api_key)
     df.head()
     ```
@@ -52,7 +52,7 @@ pip install notion-df
     ```python
     import notion_df
     notion_df.config(api_key=api_key) # Or set an environment variable `NOTION_API_KEY`
-    df = notion_df.load(notion_database_url)
+    df = notion_df.download(notion_database_url)
     notion_df.upload(df, notion_page_url, title="page-title")
     # Similarly in pandas APIs: df.to_notion(notion_page_url, title="page-title")
     ```

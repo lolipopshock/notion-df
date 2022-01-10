@@ -1,24 +1,24 @@
-from notion_df import upload, load
+from notion_df import upload, download
 
 
 def read_notion(
     notion_url: str,
     api_key: str = None,
 ):
-    return load(notion_url, api_key=api_key)
+    return download(notion_url, api_key=api_key)
 
 
 def to_notion(
     self,
     notion_url: str,
     schema=None,
-    mode:str="a",
+    mode: str = "a",
     title: str = "",
     title_col: str = "",
     errors: str = "strict",
     api_key: str = None,
 ):
-    
+
     """Upload a dataframe to the specified Notion database.
 
     Args:

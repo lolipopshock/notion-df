@@ -57,5 +57,6 @@ def transform_time(s:Any) -> str:
     
 IDENTITY_TRANSFORM = lambda ele: ele
 SECURE_STR_TRANSFORM = lambda ele: str(ele) if not is_item_empty(ele) else ""
+REMOVE_EMPTY_STR_TRANSFORM = lambda ele: None if ele=="" or ele is None else SECURE_STR_TRANSFORM(ele)
 SECURE_BOOL_TRANSFORM = lambda ele: bool(ele) if not is_item_empty(ele) else None
 SECURE_TIME_TRANSFORM = transform_time

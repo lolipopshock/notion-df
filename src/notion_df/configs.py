@@ -23,6 +23,7 @@ from notion_df.base import (
 from notion_df.utils import (
     flatten_dict,
     IDENTITY_TRANSFORM,
+    REMOVE_EMPTY_STR_TRANSFORM,
     SECURE_STR_TRANSFORM,
     SECURE_BOOL_TRANSFORM,
     SECURE_TIME_TRANSFORM,
@@ -233,10 +234,10 @@ CONFIGS_DF_TRANSFORMER = {
     # We assume the users will use the correct type and we don't need to perform any transformation
     "people": IDENTITY_TRANSFORM,
     "relation": IDENTITY_TRANSFORM,
+    "url": REMOVE_EMPTY_STR_TRANSFORM,
+    "email": REMOVE_EMPTY_STR_TRANSFORM,
     ### TODO: check the following ###
     "files": SECURE_STR_TRANSFORM,
-    "url": SECURE_STR_TRANSFORM,
-    "email": SECURE_STR_TRANSFORM,
     "phone_number": SECURE_STR_TRANSFORM,
     "formula": SECURE_STR_TRANSFORM,
     "rollup": SECURE_STR_TRANSFORM,

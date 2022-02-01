@@ -131,14 +131,14 @@ class RelationValues(BasePropertyValues):
     @classmethod
     def from_value(cls, values: Union[List[str], str]):
         if isinstance(values, list):
-            return cls(
-                relation=[RelationObject.from_value(value) for value in values]
-            )
+            return cls(relation=[RelationObject.from_value(value) for value in values])
         else:
             return cls(relation=[RelationObject.from_value(values)])
 
+
 class RollUpValues(BasePropertyValues):
     pass
+
 
 class PeopleValues(BasePropertyValues):
     people: List[UserObject]
@@ -150,11 +150,10 @@ class PeopleValues(BasePropertyValues):
     @classmethod
     def from_value(cls, values: Union[List[str], str]):
         if isinstance(values, list):
-            return cls(
-                people=[UserObject.from_value(value) for value in values]
-            )
+            return cls(people=[UserObject.from_value(value) for value in values])
         else:
             return cls(people=[UserObject.from_value(values)])
+
 
 class FileValues(BasePropertyValues):
     pass
@@ -180,8 +179,15 @@ class URLValues(BasePropertyValues):
         return self.url
 
     @classmethod
-    def from_value(cls, value: str):
+    def from_value(cls, value: Optional[str]):
         return cls(url=value)
+
+    def query_dict(self):
+        res = flatten_dict(self.dict())
+        if "url" not in res:
+            res["url"] = None 
+            # The url value is required by the notion API
+        return res
 
 
 class EmailValues(BasePropertyValues):
@@ -277,6 +283,13 @@ def _is_item_empty(item):
     return isna
 
 
+RESERVED_VALUES = ["url"]
+
+
+def _is_reserved_value(key, schema):
+    return schema[key].type in RESERVED_VALUES
+
+
 def parse_value_with_schema(
     idx: int, key: str, value: Any, schema: "DatabaseSchema"
 ) -> BasePropertyValues:
@@ -333,7 +346,7 @@ class PageProperty:
             {
                 key: parse_value_with_schema(idx, key, val, schema)
                 for idx, (key, val) in enumerate(series.items())
-                if not _is_item_empty(val)
+                if not _is_item_empty(val) or _is_reserved_value(key, schema)
             }
         )
 

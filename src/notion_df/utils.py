@@ -55,6 +55,7 @@ def transform_time(s:Any) -> str:
         elif is_datetime64_any_dtype(s):
             return datetime_transform(s)
     
+IDENTITY_TRANSFORM = lambda ele: ele
 SECURE_STR_TRANSFORM = lambda ele: str(ele) if not is_item_empty(ele) else ""
 SECURE_BOOL_TRANSFORM = lambda ele: bool(ele) if not is_item_empty(ele) else None
 SECURE_TIME_TRANSFORM = transform_time

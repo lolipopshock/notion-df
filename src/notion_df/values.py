@@ -9,7 +9,7 @@ from pydantic import BaseModel, parse_obj_as
 import pandas as pd
 from pandas.api.types import is_array_like
 
-from notion_df.base import RichText, SelectOption, Date
+from notion_df.base import RichText, SelectOption, Date, RelationObject, UserObject
 from notion_df.utils import flatten_dict
 
 
@@ -122,8 +122,39 @@ class FormulaValues(BasePropertyValues):
 
 
 class RelationValues(BasePropertyValues):
+    relation: List[RelationObject]
+
+    @property
+    def value(self) -> List[str]:
+        return [relation.id for relation in self.relation]
+
+    @classmethod
+    def from_value(cls, values: Union[List[str], str]):
+        if isinstance(values, list):
+            return cls(
+                relation=[RelationObject.from_value(value) for value in values]
+            )
+        else:
+            return cls(relation=[RelationObject.from_value(values)])
+
+class RollUpValues(BasePropertyValues):
     pass
 
+class PeopleValues(BasePropertyValues):
+    people: List[UserObject]
+
+    @property
+    def value(self) -> List[str]:
+        return [people.id for people in self.people]
+
+    @classmethod
+    def from_value(cls, values: Union[List[str], str]):
+        if isinstance(values, list):
+            return cls(
+                people=[UserObject.from_value(value) for value in values]
+            )
+        else:
+            return cls(people=[UserObject.from_value(values)])
 
 class FileValues(BasePropertyValues):
     pass

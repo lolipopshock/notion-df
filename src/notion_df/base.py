@@ -8,6 +8,7 @@ from notion_df.utils import is_time_string
 
 ### All colors supported in NOTION
 
+
 class NotionColorEnum(str, Enum):
     Default = "default"
     Gray = "gray"
@@ -96,7 +97,7 @@ class SelectOption(BaseModel):
     @classmethod
     def from_value(cls, value: str):
         return cls(name=value)
-    
+
     @validator("name")
     def name_cannot_contain_comma(cls, v):
         if "," in v:
@@ -110,6 +111,33 @@ class SelectOptions(BaseModel):
     @classmethod
     def from_value(cls, values: List[str]):
         return cls(options=[SelectOption.from_value(value) for value in values])
+
+
+class RelationObject(BaseModel):
+    id: str
+    # TODO: Change this to UUID validation
+
+    @classmethod
+    def from_value(cls, value: str):
+        return cls(id=value)
+
+
+class UserObject(BaseModel):
+    object: str = "user"
+    id: str
+    type: Optional[str]
+    name: Optional[str]
+    avatar_url: Optional[str]
+
+    @classmethod
+    def from_value(cls, value: str):
+        return cls(id=value)
+
+    @validator("object")
+    def object_is_name(cls, v):
+        if v != "user":
+            raise ValueError(f"Invalid user object value {v}")
+        return v
 
 
 class NumberFormat(BaseModel):
@@ -132,6 +160,8 @@ class FormulaProperty(BaseModel):
 class RelationProperty(BaseModel):
     database_id: str
     # TODO: Change this to UUID validation
+    synced_property_name: Optional[str]
+    synced_property_id: Optional[str]
 
 
 class Date(BaseModel):
@@ -141,7 +171,7 @@ class Date(BaseModel):
 
     @validator("start")
     def is_start_ISO8601(cls, v):
-        #TODO: Currently it cannot suport time ranges 
+        # TODO: Currently it cannot suport time ranges
         if v is not None:
             if not is_time_string(v):
                 raise ValueError(

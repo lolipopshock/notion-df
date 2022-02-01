@@ -22,6 +22,7 @@ from notion_df.base import (
 )
 from notion_df.utils import (
     flatten_dict,
+    IDENTITY_TRANSFORM,
     SECURE_STR_TRANSFORM,
     SECURE_BOOL_TRANSFORM,
     SECURE_TIME_TRANSFORM,
@@ -227,14 +228,17 @@ CONFIGS_DF_TRANSFORMER = {
     "multi_select": lambda lst: [str(ele) for ele in lst] if is_list_like(lst) else str(lst),
     "date": SECURE_TIME_TRANSFORM,
     "checkbox": SECURE_BOOL_TRANSFORM,
+    ### Notion-specific Properties ### 
+    # Currently we don't automatically convert these properties  
+    # We assume the users will use the correct type and we don't need to perform any transformation
+    "people": IDENTITY_TRANSFORM,
+    "relation": IDENTITY_TRANSFORM,
     ### TODO: check the following ###
-    "people": SECURE_STR_TRANSFORM,
     "files": SECURE_STR_TRANSFORM,
     "url": SECURE_STR_TRANSFORM,
     "email": SECURE_STR_TRANSFORM,
     "phone_number": SECURE_STR_TRANSFORM,
     "formula": SECURE_STR_TRANSFORM,
-    "relation": SECURE_STR_TRANSFORM,
     "rollup": SECURE_STR_TRANSFORM,
     "created_time": SECURE_STR_TRANSFORM,
     "created_by": SECURE_STR_TRANSFORM,

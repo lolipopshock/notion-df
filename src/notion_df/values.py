@@ -136,7 +136,7 @@ class RelationValues(BasePropertyValues):
             return cls(relation=[RelationObject.from_value(values)])
 
 
-class RollUpValues(BasePropertyValues):
+class RollupValues(BasePropertyValues):
     pass
 
 

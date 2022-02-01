@@ -16,7 +16,7 @@ from pandas.api.types import (
 from notion_df.base import (
     SelectOptions,
     NumberFormat,
-    RollUpProperty,
+    RollupProperty,
     FormulaProperty,
     RelationProperty,
 )
@@ -161,7 +161,7 @@ class RelationConfig(BasePropertyConfig):
 
 
 class RollupConfig(BasePropertyConfig):
-    roll_up: RollUpProperty
+    rollup: RollupProperty
 
 
 class CreatedTimeConfig(BasePropertyConfig):

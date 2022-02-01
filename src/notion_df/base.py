@@ -144,7 +144,7 @@ class NumberFormat(BaseModel):
     format: str
 
 
-class RollUpProperty(BaseModel):
+class RollupProperty(BaseModel):
     relation_property_name: Optional[str]
     relation_property_id: Optional[str]
     rollup_property_name: Optional[str]

@@ -2,14 +2,21 @@
 
 from typing import List, Dict, Optional, Union, Any
 from dataclasses import dataclass
-from collections.abc import Iterable
+from copy import deepcopy
 import numbers
 
-from pydantic import BaseModel, parse_obj_as
+from pydantic import BaseModel, parse_obj_as, validator, root_validator
 import pandas as pd
 from pandas.api.types import is_array_like
 
-from notion_df.base import RichText, SelectOption, Date, RelationObject, UserObject
+from notion_df.base import (
+    RichText,
+    SelectOption,
+    DateObject,
+    RelationObject,
+    UserObject,
+    RollupObject,
+)
 from notion_df.utils import flatten_dict
 
 
@@ -106,7 +113,7 @@ class MultiSelectValues(BasePropertyValues):
 
 
 class DateValues(BasePropertyValues):
-    date: Optional[Date]
+    date: Optional[DateObject]
 
     @property
     def value(self) -> str:
@@ -114,7 +121,7 @@ class DateValues(BasePropertyValues):
 
     @classmethod
     def from_value(cls, value: str):
-        return cls(date=Date.from_value(value))
+        return cls(date=DateObject.from_value(value))
 
 
 class FormulaValues(BasePropertyValues):
@@ -134,10 +141,6 @@ class RelationValues(BasePropertyValues):
             return cls(relation=[RelationObject.from_value(value) for value in values])
         else:
             return cls(relation=[RelationObject.from_value(values)])
-
-
-class RollupValues(BasePropertyValues):
-    pass
 
 
 class PeopleValues(BasePropertyValues):
@@ -185,7 +188,7 @@ class URLValues(BasePropertyValues):
     def query_dict(self):
         res = flatten_dict(self.dict())
         if "url" not in res:
-            res["url"] = None 
+            res["url"] = None
             # The url value is required by the notion API
         return res
 
@@ -254,6 +257,27 @@ VALUES_MAPPING = {
 }
 
 
+class RollupValues(BasePropertyValues):
+    rollup: RollupObject
+
+    @validator("rollup", pre=True)
+    def check_rollup_values(cls, val):
+        val = deepcopy(val)
+        if val.get("array") is not None:
+            val["array"] = [
+                parse_obj_as(VALUES_MAPPING[data["type"]], data)
+                for data in val["array"]
+            ]
+        return val
+
+    @property
+    def value(self):
+        return self.rollup.value
+
+
+VALUES_MAPPING["rollup"] = RollupValues
+
+
 def parse_single_values(data: Dict) -> BasePropertyValues:
     return parse_obj_as(VALUES_MAPPING[data["type"]], data)
 
@@ -284,6 +308,7 @@ def _is_item_empty(item):
 
 
 RESERVED_VALUES = ["url"]
+# Even if the value is none, we still want to keep it in the dataframe
 
 
 def _is_reserved_value(key, schema):

@@ -8,7 +8,7 @@ from notion_client import Client
 from notion_client.helpers import get_id
 
 from notion_df.values import PageProperties, PageProperty
-from notion_df.configs import DatabaseSchema
+from notion_df.configs import DatabaseSchema, NON_EDITABLE_TYPES
 
 API_KEY = None
 NOT_REVERSE_DATAFRAME = -1
@@ -261,7 +261,7 @@ def upload(
         raise NotImplementedError
         # TODO: clean the current values in the notion database (if any)
 
-    df = schema.transform(df)
+    df = schema.transform(df, remove_non_editables=True)
     upload_to_database(df, databse_id, schema, client, errors)
 
     print(f"Your dataframe has been uploaded to the Notion page: {notion_url} .")

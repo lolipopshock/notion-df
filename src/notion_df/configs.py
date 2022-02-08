@@ -216,6 +216,14 @@ CONFIGS_MAPPING = {
     for _cls in BasePropertyConfig.__subclasses__()
 }
 
+NON_EDITABLE_TYPES = [
+    "formula", #TODO: Double check for this
+    "created_time",
+    "created_by",
+    "last_edited_time",
+    "last_edited_by",
+    "rollup",
+]
 
 def parse_single_config(data: Dict) -> BasePropertyConfig:
     return parse_obj_as(CONFIGS_MAPPING[data["type"]], data)
@@ -225,7 +233,7 @@ CONFIGS_DF_TRANSFORMER = {
     "title": SECURE_STR_TRANSFORM,
     "rich_text": SECURE_STR_TRANSFORM,
     "number": None,
-    "select": SECURE_STR_TRANSFORM,
+    "select": REMOVE_EMPTY_STR_TRANSFORM,
     "multi_select": lambda lst: [str(ele) for ele in lst] if is_list_like(lst) else str(lst),
     "date": SECURE_TIME_TRANSFORM,
     "checkbox": SECURE_BOOL_TRANSFORM,
@@ -318,6 +326,11 @@ class DatabaseSchema:
         if hasattr(df, "schema"):
             if not df.schema == self:
                 return False
+
+            # TODO: There might miss one thing: if the rollup is not configured
+            # the database reterive result will be empty for that column.
+            # But the database query will return the value for that column 
+            # (even if that's empty). So this would miss this check...
         else:
             for col in df.columns:
                 if col not in self.configs.keys():
@@ -326,11 +339,20 @@ class DatabaseSchema:
         # TODO: Add more advanced check on datatypes
         return True
 
-    def transform(self, df: "pd.DataFrame") -> "pd.DataFrame":
-        """Transform the df such that the data values are compatible with the schema"""
+    def transform(self, df: "pd.DataFrame", remove_non_editables=False) -> "pd.DataFrame":
+        """Transform the df such that the data values are compatible with the schema.
+        It assumes the df has already been validated against the schema.
+        """
         df = df.copy()
+        used_columns = []
         for col in df.columns:
+            if self[col].type in NON_EDITABLE_TYPES:
+                continue # Skip non-editable columns
+            
             transform = CONFIGS_DF_TRANSFORMER[self[col].type]
             if transform is not None:
                 df[col] = df[col].apply(transform)
+            used_columns.append(col)
+        if remove_non_editables:
+            return df[used_columns]
         return df

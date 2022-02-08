@@ -269,7 +269,7 @@ class RollupValues(BasePropertyValues):
                 for data in val["array"]
             ]
         return val
-    
+
     @property
     def value(self):
         return self.rollup.value
@@ -308,6 +308,7 @@ def _is_item_empty(item):
 
 
 RESERVED_VALUES = ["url"]
+# Even if the value is none, we still want to keep it in the dataframe
 
 
 def _is_reserved_value(key, schema):

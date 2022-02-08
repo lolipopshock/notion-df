@@ -1,7 +1,7 @@
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 import re
 from enum import Enum
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, validator, root_validator
 import pandas as pd
 
 from notion_df.utils import is_time_string
@@ -144,15 +144,6 @@ class NumberFormat(BaseModel):
     format: str
 
 
-class RollupProperty(BaseModel):
-    relation_property_name: Optional[str]
-    relation_property_id: Optional[str]
-    rollup_property_name: Optional[str]
-    rollup_property_id: Optional[str]
-    function: str
-    # TODO: Change this to ENUM https://developers.notion.com/reference/create-a-database#rollup-configuration
-
-
 class FormulaProperty(BaseModel):
     expression: str
 
@@ -164,7 +155,7 @@ class RelationProperty(BaseModel):
     synced_property_id: Optional[str]
 
 
-class Date(BaseModel):
+class DateObject(BaseModel):
     start: Optional[str] = None
     end: Optional[str] = None
     time_zone: Optional[str] = None
@@ -198,3 +189,47 @@ class Date(BaseModel):
     def value(self):
         return pd.to_datetime(self.start)
         # TODO: what should the data structure be if self.end is not None?
+
+class RollupProperty(BaseModel):
+    relation_property_name: Optional[str]
+    relation_property_id: Optional[str]
+    rollup_property_name: Optional[str]
+    rollup_property_id: Optional[str]
+    function: str
+    #TODO: Change this to ENUM - https://developers.notion.com/reference/create-a-database#rollup-configuration
+
+
+class RollupObject(BaseModel):
+    type: str 
+    #TODO: Change this to ENUM - https://developers.notion.com/reference/property-value-object#rollup-property-values
+    number: Optional[float]
+    date: Optional[DateObject]
+    array: Optional[List[Any]]
+    #Based on the description in https://developers.notion.com/reference/property-value-object#rollup-property-value-element
+    #Each element is exactly like property value object, but without the "id" key.
+    #As there's a preprocess step in RollupValues, each item of the array must
+    #be a property value object.
+    function: Optional[str]
+    #Though the function param doesn't appear in the documentation, it exists
+    #in the return values of the API. Set it as optional for future compatibility.
+    #TODO: check in the future if the function param should be updated.
+    
+    @validator("type")
+    def ensure_non_empty_data(cls, v):
+        data_type = v
+        if data_type is None:
+            raise ValueError("RollupObject must have a type.")
+        if data_type not in ["number", "date", "array"]:
+            raise ValueError(f"RollupObject type {data_type} is invalid.")
+        return v
+        
+    @property
+    def value(self):
+        if self.type == "number":
+            return self.number
+        if self.type == "date":
+            if self.date is not None:
+                return self.date.value
+        if self.type == "array":
+            return [ele.value for ele in self.array]
+    

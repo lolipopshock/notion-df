@@ -1,5 +1,4 @@
 from typing import List, Dict, Optional, Any
-import re
 from enum import Enum
 from pydantic import BaseModel, validator, root_validator
 import pandas as pd
@@ -261,3 +260,22 @@ class FileObject(BaseModel):
         else:
             if self.external is not None:
                 return self.external.value
+
+class FormulaObject(BaseModel):
+    type: str
+    string: Optional[str]
+    number: Optional[float]
+    boolean: Optional[bool]
+    date: Optional[DateObject]
+
+    @property
+    def value(self):
+        if self.type == 'string':
+            return self.string
+        elif self.type == 'number':
+            return self.number
+        elif self.type == "boolean":
+            return self.boolean
+        elif self.type == "date":
+            if self.date is not None:
+                return self.date.value

@@ -16,7 +16,8 @@ from notion_df.base import (
     RelationObject,
     UserObject,
     RollupObject,
-    FileObject
+    FileObject,
+    FormulaObject
 )
 from notion_df.utils import flatten_dict
 
@@ -126,7 +127,11 @@ class DateValues(BasePropertyValues):
 
 
 class FormulaValues(BasePropertyValues):
-    pass
+    formula: FormulaObject
+    
+    @property
+    def value(self):
+        return self.formula.value
 
 
 class RelationValues(BasePropertyValues):

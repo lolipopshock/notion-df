@@ -4,6 +4,7 @@ import warnings
 import os
 from functools import wraps
 
+import pandas as pd
 from notion_client import Client
 from notion_client.helpers import get_id
 
@@ -82,14 +83,14 @@ def download(
     *,
     api_key: str = None,
     client: Client = None,
-) -> "pd.DataFrame":
+) -> pd.DataFrame:
     """Download a Notion database as a pandas DataFrame.
 
     Args:
-        notion_url (str): 
+        notion_url (str):
             The URL of the Notion database to download from.
-        nrows (int, optional): 
-            Number of rows of file to read. Useful for reading 
+        nrows (int, optional):
+            Number of rows of file to read. Useful for reading
             pieces of large files.
         api_key (str, optional):
             The API key of the Notion integration.
@@ -108,7 +109,7 @@ def download(
     page_size = NOTION_MAX_PAGE_SIZE
     if nrows is not None:
         if nrows <= NOTION_MAX_PAGE_SIZE:
-            page_size = nrows    
+            page_size = nrows
 
     query_results = query_database(database_id, client, page_size=page_size)
     downloaded_rows.extend(query_results["results"])
@@ -136,6 +137,23 @@ def download(
     schema = DatabaseSchema.from_raw(retrieve_results["properties"])
 
     df = properties.to_frame()
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        # TODO: figure out a better solution 
+        # When doing the following, Pandas may think you are trying
+        # to add a new column to the dataframe; it will show the warnings, 
+        # but it will not actually add the column. So we use catch_warnings 
+        # to hide the warnings. 
+        # However this might not be the best way to do so. Some alternatives
+        # include setting df.attrs https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.attrs.html
+        # Or even use something like multi-level index for saving notion_ids. 
+        # Nevertheless, all of them seems not that perfect -- for example,
+        # after copying or slicing, the values will disappear. 
+        # Should try to figure out a better solution in the future. 
+        df.notion_urls = pd.Series([ele["url"] for ele in downloaded_rows])
+        df.notion_ids = pd.Series([ele["id"] for ele in downloaded_rows])
+        df.notion_query_results = downloaded_rows  # TODO: Rethink if this should be private
     df.schema = schema
     return df
 
@@ -179,7 +197,7 @@ def load_database_schema(database_id, client):
 
 @use_client
 def upload(
-    df: "pd.DataFrame",
+    df: pd.DataFrame,
     notion_url: str,
     schema: DatabaseSchema = None,
     mode: str = "a",

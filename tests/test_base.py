@@ -1,8 +1,12 @@
+import os 
 import pytest
 import notion_df
 import pandas as pd
 from pydantic import ValidationError
+from notion_df.agent import download, upload
 
+NOTION_API_KEY = os.environ.get("NOTION_API_KEY")
+    
 def test_select_option():
     schema = notion_df.configs.DatabaseSchema(
         {"options": notion_df.configs.MultiSelectConfig()}
@@ -23,3 +27,14 @@ def test_select_option():
     dff = schema.transform(df)
     with pytest.raises(ValidationError):
         notion_df.values.PageProperty.from_series(dff.iloc[0], schema)
+        
+def test_rollup():
+    NOTION_ROLLUP_DF = os.environ.get("NOTION_ROLLUP_DF")
+    
+    if not NOTION_ROLLUP_DF or not NOTION_API_KEY:
+        pytest.skip("API key not provided")
+        
+    # Ensure the rollup values can be downloaded and uploaded
+    df = download(NOTION_ROLLUP_DF, api_key=NOTION_API_KEY)
+    upload(df[:2], NOTION_ROLLUP_DF, api_key=NOTION_API_KEY)
+    # TODO: Add remove rollup values

@@ -138,6 +138,10 @@ class UserObject(BaseModel):
         if v != "user":
             raise ValueError(f"Invalid user object value {v}")
         return v
+    
+    @property
+    def value(self):
+        return self.name
 
 
 class NumberFormat(BaseModel):

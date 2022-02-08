@@ -230,7 +230,11 @@ class CreatedTimeValues(BasePropertyValues):
 
 
 class CreatedByValues(BasePropertyValues):
-    pass
+    created_by: UserObject
+
+    @property
+    def value(self) -> List[str]:
+        return self.created_by.value
 
 
 class LastEditedTimeValues(BasePropertyValues):
@@ -246,7 +250,11 @@ class LastEditedTimeValues(BasePropertyValues):
 
 
 class LastEditedByValues(BasePropertyValues):
-    pass
+    last_edited_by: UserObject
+
+    @property
+    def value(self) -> List[str]:
+        return self.last_edited_by.value
 
 
 VALUES_MAPPING = {

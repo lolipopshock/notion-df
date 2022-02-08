@@ -16,6 +16,7 @@ from notion_df.base import (
     RelationObject,
     UserObject,
     RollupObject,
+    FileObject
 )
 from notion_df.utils import flatten_dict
 
@@ -158,9 +159,12 @@ class PeopleValues(BasePropertyValues):
             return cls(people=[UserObject.from_value(values)])
 
 
-class FileValues(BasePropertyValues):
-    pass
+class FilesValues(BasePropertyValues):
+    files: List[FileObject]
 
+    @property
+    def value(self) -> List[str]:
+        return [file.value for file in self.files]
 
 class CheckboxValues(BasePropertyValues):
     checkbox: Optional[bool]

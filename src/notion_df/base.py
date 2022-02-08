@@ -194,30 +194,31 @@ class DateObject(BaseModel):
         return pd.to_datetime(self.start)
         # TODO: what should the data structure be if self.end is not None?
 
+
 class RollupProperty(BaseModel):
     relation_property_name: Optional[str]
     relation_property_id: Optional[str]
     rollup_property_name: Optional[str]
     rollup_property_id: Optional[str]
     function: str
-    #TODO: Change this to ENUM - https://developers.notion.com/reference/create-a-database#rollup-configuration
+    # TODO: Change this to ENUM - https://developers.notion.com/reference/create-a-database#rollup-configuration
 
 
 class RollupObject(BaseModel):
-    type: str 
-    #TODO: Change this to ENUM - https://developers.notion.com/reference/property-value-object#rollup-property-values
+    type: str
+    # TODO: Change this to ENUM - https://developers.notion.com/reference/property-value-object#rollup-property-values
     number: Optional[float]
     date: Optional[DateObject]
     array: Optional[List[Any]]
-    #Based on the description in https://developers.notion.com/reference/property-value-object#rollup-property-value-element
-    #Each element is exactly like property value object, but without the "id" key.
-    #As there's a preprocess step in RollupValues, each item of the array must
-    #be a property value object.
+    # Based on the description in https://developers.notion.com/reference/property-value-object#rollup-property-value-element
+    # Each element is exactly like property value object, but without the "id" key.
+    # As there's a preprocess step in RollupValues, each item of the array must
+    # be a property value object.
     function: Optional[str]
-    #Though the function param doesn't appear in the documentation, it exists
-    #in the return values of the API. Set it as optional for future compatibility.
-    #TODO: check in the future if the function param should be updated.
-    
+    # Though the function param doesn't appear in the documentation, it exists
+    # in the return values of the API. Set it as optional for future compatibility.
+    # TODO: check in the future if the function param should be updated.
+
     @validator("type")
     def ensure_non_empty_data(cls, v):
         data_type = v
@@ -226,7 +227,7 @@ class RollupObject(BaseModel):
         if data_type not in ["number", "date", "array"]:
             raise ValueError(f"RollupObject type {data_type} is invalid.")
         return v
-        
+
     @property
     def value(self):
         if self.type == "number":
@@ -236,4 +237,27 @@ class RollupObject(BaseModel):
                 return self.date.value
         if self.type == "array":
             return [ele.value for ele in self.array]
+
+
+class FileTargetObject(BaseModel):
+    url: str
+    expiry_time: Optional[str]
     
+    @property
+    def value(self):
+        return self.url
+
+class FileObject(BaseModel):
+    name: str
+    type: str
+    file: Optional[FileTargetObject]
+    external: Optional[FileTargetObject]
+
+    @property
+    def value(self):
+        if self.type == 'file':
+            if self.file is not None:
+                return self.file.value
+        else:
+            if self.external is not None:
+                return self.external.value

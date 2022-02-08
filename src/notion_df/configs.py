@@ -218,6 +218,7 @@ CONFIGS_MAPPING = {
 
 NON_EDITABLE_TYPES = [
     "formula", #TODO: Double check for this
+    "files", # According to https://developers.notion.com/reference/file-object#externally-hosted-files-vs-files-hosted-by-notion
     "created_time",
     "created_by",
     "last_edited_time",

@@ -38,3 +38,11 @@ def test_rollup():
     df = download(NOTION_ROLLUP_DF, api_key=NOTION_API_KEY)
     upload(df[:2], NOTION_ROLLUP_DF, api_key=NOTION_API_KEY)
     # TODO: Add remove rollup values
+
+def test_files_edit_by():
+    NOTION_FILES_DF = os.environ.get("NOTION_FILES_DF")
+    
+    if not NOTION_FILES_DF or not NOTION_API_KEY:
+        pytest.skip("API key not provided")
+    
+    df = download(NOTION_FILES_DF, api_key=NOTION_API_KEY)

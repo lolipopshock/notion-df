@@ -5,11 +5,13 @@ import os
 from functools import wraps
 
 import pandas as pd
+from httpx import HTTPStatusError
 from notion_client import Client
 from notion_client.helpers import get_id
 
 from notion_df.values import PageProperties, PageProperty
 from notion_df.configs import DatabaseSchema, NON_EDITABLE_TYPES
+from notion_df.utils import is_uuid
 
 API_KEY = None
 NOT_REVERSE_DATAFRAME = -1
@@ -76,13 +78,11 @@ def query_database(
     return query_results
 
 
-@use_client
-def download(
+def download_df_from_database(
     notion_url: str,
+    client: Client,
     nrows: Optional[int] = None,
-    *,
-    api_key: str = None,
-    client: Client = None,
+    errors: str = "strict",
 ) -> pd.DataFrame:
     """Download a Notion database as a pandas DataFrame.
 
@@ -101,8 +101,29 @@ def download(
     Returns:
         pd.DataFrame: the loaded dataframe.
     """
-    assert _is_notion_database(notion_url)
-    database_id = get_id(notion_url)
+    if not is_uuid(notion_url):
+        assert _is_notion_database(notion_url)
+        database_id = get_id(notion_url)
+    else:
+        database_id = notion_url
+
+    # Check the if the id is a database first
+    try:
+        retrieve_results = client.databases.retrieve(database_id=database_id)
+        schema = DatabaseSchema.from_raw(retrieve_results["properties"])
+    except HTTPStatusError:
+        error_msg = (
+            f"The object {database_id} might not be a notion database, "
+            "or integration associated with the API key don't have access "
+            "to it."
+        )
+        if errors == "strict":
+            raise ValueError(error_msg)
+        elif errors == "warn":
+            warnings.warn(error_msg)
+            return None
+        elif errors == "ignore":
+            return None
 
     downloaded_rows = []
 
@@ -133,30 +154,61 @@ def download(
 
     properties = PageProperties.from_raw(downloaded_rows)
 
-    retrieve_results = client.databases.retrieve(database_id=database_id)
-    schema = DatabaseSchema.from_raw(retrieve_results["properties"])
-
     df = properties.to_frame()
 
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        # TODO: figure out a better solution 
+        # TODO: figure out a better solution
         # When doing the following, Pandas may think you are trying
-        # to add a new column to the dataframe; it will show the warnings, 
-        # but it will not actually add the column. So we use catch_warnings 
-        # to hide the warnings. 
+        # to add a new column to the dataframe; it will show the warnings,
+        # but it will not actually add the column. So we use catch_warnings
+        # to hide the warnings.
         # However this might not be the best way to do so. Some alternatives
         # include setting df.attrs https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.attrs.html
-        # Or even use something like multi-level index for saving notion_ids. 
+        # Or even use something like multi-level index for saving notion_ids.
         # Nevertheless, all of them seems not that perfect -- for example,
-        # after copying or slicing, the values will disappear. 
-        # Should try to figure out a better solution in the future. 
+        # after copying or slicing, the values will disappear.
+        # Should try to figure out a better solution in the future.
         df.notion_urls = pd.Series([ele["url"] for ele in downloaded_rows])
         df.notion_ids = pd.Series([ele["id"] for ele in downloaded_rows])
-        df.notion_query_results = downloaded_rows  # TODO: Rethink if this should be private
+        df.notion_query_results = downloaded_rows
+        # TODO: Rethink if this should be private
     df.schema = schema
     return df
 
+
+@use_client
+def download(
+    notion_url: str,
+    nrows: Optional[int] = None,
+    resolve_relation_values: Optional[bool] = False,
+    errors: str = "strict",
+    *,
+    api_key: str = None,
+    client: Client = None,
+):
+    df = download_df_from_database(
+        notion_url=notion_url,
+        nrows=nrows,
+        client=client,
+        errors=errors,
+    )
+    if resolve_relation_values:
+        for col in df.columns:
+            if df.schema[col].type == "relation":
+                relation_df = download_df_from_database(
+                    df.schema[col].relation.database_id, errors="warn", client=client,
+                )
+                if relation_df is not None:
+                    rel_title_col = relation_df.schema.title_column
+                    obj_id_to_string = {
+                        obj_id: obj_title
+                        for obj_id, obj_title in zip(
+                            relation_df.notion_ids, relation_df[rel_title_col]
+                        )
+                    }
+                    df[col] = df[col].apply(lambda row: [obj_id_to_string[ele] for ele in row])
+    return df
 
 def create_database(
     page_id: str, client: Client, schema: DatabaseSchema, title: str = ""

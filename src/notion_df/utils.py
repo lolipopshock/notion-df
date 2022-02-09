@@ -1,6 +1,7 @@
 from typing import List, Dict, Optional, Union, Any
 from datetime import datetime
 from dateutil.parser import parse
+from uuid import UUID
 
 import pandas as pd
 from pandas.api.types import is_array_like, is_datetime64_any_dtype
@@ -36,6 +37,15 @@ def is_time_string(s: str) -> bool:
     # Ref https://stackoverflow.com/questions/25341945/check-if-string-has-date-any-format
     try:
         parse(s)
+        return True
+    except ValueError:
+        return False
+
+
+def is_uuid(s: str) -> bool:
+    # Kind of an OK solution.. But can be further improved?
+    try:
+        UUID(str(s))
         return True
     except ValueError:
         return False

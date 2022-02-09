@@ -321,6 +321,13 @@ class DatabaseSchema:
         
         return cls(configs)
 
+    @property
+    def title_column(self) -> Optional[str]:
+        for key, config in self.configs.items():
+            if isinstance(config, TitleConfig) or config.type == "title":
+                # TODO: Rethink this
+                return key
+
     def is_df_compatible(self, df: "pd.DataFrame") -> bool:
         """Validate the dataframe against the schema"""
 

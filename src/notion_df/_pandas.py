@@ -43,6 +43,8 @@ def to_notion(
     title: str = "",
     title_col: str = "",
     errors: str = "strict",
+    resolve_relation_values: bool = False,
+    create_new_rows_in_relation_target: bool = False,
     api_key: str = None,
 ):
 
@@ -94,6 +96,8 @@ def to_notion(
         title=title,
         title_col=title_col,
         errors=errors,
+        resolve_relation_values=resolve_relation_values,
+        create_new_rows_in_relation_target=create_new_rows_in_relation_target,
         api_key=api_key,
     )
 

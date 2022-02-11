@@ -27,6 +27,7 @@ from notion_df.utils import (
     SECURE_STR_TRANSFORM,
     SECURE_BOOL_TRANSFORM,
     SECURE_TIME_TRANSFORM,
+    LIST_TRANSFORM
 )
 
 
@@ -242,7 +243,7 @@ CONFIGS_DF_TRANSFORMER = {
     # Currently we don't automatically convert these properties  
     # We assume the users will use the correct type and we don't need to perform any transformation
     "people": IDENTITY_TRANSFORM,
-    "relation": IDENTITY_TRANSFORM,
+    "relation": LIST_TRANSFORM,
     "url": REMOVE_EMPTY_STR_TRANSFORM,
     "email": REMOVE_EMPTY_STR_TRANSFORM,
     ### TODO: check the following ###

@@ -78,6 +78,33 @@ def query_database(
     return query_results
 
 
+def load_df_from_queries(
+    database_query_results: List[Dict],
+):
+    properties = PageProperties.from_raw(database_query_results)
+    df = properties.to_frame()
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        # TODO: figure out a better solution
+        # When doing the following, Pandas may think you are trying
+        # to add a new column to the dataframe; it will show the warnings,
+        # but it will not actually add the column. So we use catch_warnings
+        # to hide the warnings.
+        # However this might not be the best way to do so. Some alternatives
+        # include setting df.attrs https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.attrs.html
+        # Or even use something like multi-level index for saving notion_ids.
+        # Nevertheless, all of them seems not that perfect -- for example,
+        # after copying or slicing, the values will disappear.
+        # Should try to figure out a better solution in the future.
+        df.notion_urls = pd.Series([ele["url"] for ele in database_query_results])
+        df.notion_ids = pd.Series([ele["id"] for ele in database_query_results])
+        df.notion_query_results = database_query_results
+        # TODO: Rethink if this should be private
+
+    return df
+
+
 def download_df_from_database(
     notion_url: str,
     client: Client,
@@ -152,27 +179,7 @@ def download_df_from_database(
         )
         downloaded_rows.extend(query_results["results"])
 
-    properties = PageProperties.from_raw(downloaded_rows)
-
-    df = properties.to_frame()
-
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        # TODO: figure out a better solution
-        # When doing the following, Pandas may think you are trying
-        # to add a new column to the dataframe; it will show the warnings,
-        # but it will not actually add the column. So we use catch_warnings
-        # to hide the warnings.
-        # However this might not be the best way to do so. Some alternatives
-        # include setting df.attrs https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.attrs.html
-        # Or even use something like multi-level index for saving notion_ids.
-        # Nevertheless, all of them seems not that perfect -- for example,
-        # after copying or slicing, the values will disappear.
-        # Should try to figure out a better solution in the future.
-        df.notion_urls = pd.Series([ele["url"] for ele in downloaded_rows])
-        df.notion_ids = pd.Series([ele["id"] for ele in downloaded_rows])
-        df.notion_query_results = downloaded_rows
-        # TODO: Rethink if this should be private
+    df = load_df_from_queries(downloaded_rows)
     df.schema = schema
     return df
 
@@ -197,7 +204,9 @@ def download(
         for col in df.columns:
             if df.schema[col].type == "relation":
                 relation_df = download_df_from_database(
-                    df.schema[col].relation.database_id, errors="warn", client=client,
+                    df.schema[col].relation.database_id,
+                    errors="warn",
+                    client=client,
                 )
                 if relation_df is not None:
                     rel_title_col = relation_df.schema.title_column
@@ -207,8 +216,11 @@ def download(
                             relation_df.notion_ids, relation_df[rel_title_col]
                         )
                     }
-                    df[col] = df[col].apply(lambda row: [obj_id_to_string[ele] for ele in row])
+                    df[col] = df[col].apply(
+                        lambda row: [obj_id_to_string[ele] for ele in row]
+                    )
     return df
+
 
 def create_database(
     page_id: str, client: Client, schema: DatabaseSchema, title: str = ""
@@ -225,13 +237,18 @@ def create_database(
 def upload_row_to_database(row, database_id, schema, client):
 
     properties = PageProperty.from_series(row, schema).query_dict()
-    client.pages.create(parent={"database_id": database_id}, properties=properties)
+    response = client.pages.create(
+        parent={"database_id": database_id}, properties=properties
+    )
+    return response
 
 
 def upload_to_database(df, databse_id, schema, client, errors):
+    all_response = []
     for _, row in df[::NOT_REVERSE_DATAFRAME].iterrows():
         try:
-            upload_row_to_database(row, databse_id, schema, client)
+            response = upload_row_to_database(row, databse_id, schema, client)
+            all_response.append(response)
         except Exception as e:
             if errors == "strict":
                 raise e
@@ -239,6 +256,7 @@ def upload_to_database(df, databse_id, schema, client, errors):
                 warnings.warn(f"Encountered errors {e} while uploading row: {row}")
             elif errors == "ignore":
                 continue
+    return all_response[::NOT_REVERSE_DATAFRAME]
 
 
 def load_database_schema(database_id, client):
@@ -256,6 +274,8 @@ def upload(
     title: str = "",
     title_col: str = "",
     errors: str = "strict",
+    resolve_relation_values: bool = False,
+    create_new_rows_in_relation_target: bool = False,
     *,
     api_key: str = None,
     client: Client = None,
@@ -332,6 +352,70 @@ def upload(
         # TODO: clean the current values in the notion database (if any)
 
     df = schema.transform(df, remove_non_editables=True)
+
+    # Assumes the notion database is created and has the appropriate schema
+    if resolve_relation_values:
+        for col in df.columns:
+            if schema[col].type == "relation":
+                
+                if df[col].apply(lambda row: all([is_uuid(ele) for ele in row])).all():
+                    # The column is all in uuid, we don't need to resolve it 
+                    continue 
+
+                # Try to download the target_relation_df   
+                relation_db_id = schema[col].relation.database_id
+                relation_df = download_df_from_database(
+                    relation_db_id,
+                    errors="warn",
+                    client=client,
+                )
+
+                if relation_df is not None:
+                    rel_title_col = relation_df.schema.title_column
+                    obj_string_to_id = {
+                        obj_title: obj_id
+                        for obj_id, obj_title in zip(
+                            relation_df.notion_ids, relation_df[rel_title_col]
+                        )
+                    }
+
+                    all_unique_obj_strings_in_relation_df = set(
+                        relation_df[rel_title_col].tolist()
+                    )
+                    all_unique_obj_strings_in_df = set(sum(df[col].tolist(), []))
+                    # This assumes the column has been transformed to a list of lists;
+                    # which is a true assumption given the transformation for the relation
+                    # column (LIST_TRANSFORM).
+                    new_object_strings = all_unique_obj_strings_in_df.difference(
+                        all_unique_obj_strings_in_relation_df
+                    )
+
+                    if create_new_rows_in_relation_target and len(new_object_strings) > 0:
+                        new_relation_df = pd.DataFrame(
+                            list(new_object_strings), columns=[rel_title_col]
+                        )
+                        responses = upload_to_database(
+                            new_relation_df,
+                            relation_db_id,
+                            relation_df.schema,
+                            client,
+                            "warn",
+                        )
+                        appended_relation_df = load_df_from_queries(responses)
+                        obj_string_to_id.update(
+                            {
+                                obj_title: obj_id
+                                for obj_id, obj_title in zip(
+                                    appended_relation_df.notion_ids,
+                                    appended_relation_df[rel_title_col],
+                                )
+                            }
+                        )
+
+                    df[col] = df[col].apply(
+                        lambda row: [obj_string_to_id[ele] for ele in row if ele in obj_string_to_id]
+                    )
+
     upload_to_database(df, databse_id, schema, client, errors)
 
     print(f"Your dataframe has been uploaded to the Notion page: {notion_url} .")

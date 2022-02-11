@@ -4,7 +4,7 @@ from dateutil.parser import parse
 from uuid import UUID
 
 import pandas as pd
-from pandas.api.types import is_array_like, is_datetime64_any_dtype
+from pandas.api.types import is_array_like, is_datetime64_any_dtype, is_list_like
 
 
 def flatten_dict(data: Dict):
@@ -71,6 +71,7 @@ def transform_time(s: Any) -> str:
 
 IDENTITY_TRANSFORM = lambda ele: ele
 SECURE_STR_TRANSFORM = lambda ele: str(ele) if not is_item_empty(ele) else ""
+LIST_TRANSFORM = lambda ele: ele if is_list_like(ele) else [ele]
 REMOVE_EMPTY_STR_TRANSFORM = (
     lambda ele: None if ele == "" or ele is None or pd.isna(ele) else SECURE_STR_TRANSFORM(ele)
 )

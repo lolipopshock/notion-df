@@ -50,7 +50,7 @@ pip install notion-df
 
     In details, let's say the `"test"` column in df is a relation column in Notion. 
     1. When `resolve_relation_values=False`, the return results for that column will be a list of UUIDs of the target page: `['65e04f11-xxxx', 'b0ffcb4b-xxxx', ]`. 
-    2. 1. When `resolve_relation_values=True`, the return results for that column will be a list of regular strings corresponding to the name column of the target pages: `['page1', 'page2', ]`. 
+    2.  When `resolve_relation_values=True`, the return results for that column will be a list of regular strings corresponding to the name column of the target pages: `['page1', 'page2', ]`. 
 
     </details>
 

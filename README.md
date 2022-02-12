@@ -38,6 +38,21 @@ pip install notion-df
     ```
 
     </details>
+    
+    <details>
+    <summary>What if your table has a relation column?</summary>
+    
+    ```python
+    df = notion_df.download(notion_database_url, 
+                            resolve_relation_values=True)
+    ```
+    The `resolve_relation_values=True` will automatically resolve the linking for all the relation columns whose target can be accessed by the current notion integration.
+
+    In details, let's say the `"test"` column in df is a relation column in Notion. 
+    1. When `resolve_relation_values=False`, the return results for that column will be a list of UUIDs of the target page: `['65e04f11-xxxx', 'b0ffcb4b-xxxx', ]`. 
+    2. 1. When `resolve_relation_values=True`, the return results for that column will be a list of regular strings corresponding to the name column of the target pages: `['page1', 'page2', ]`. 
+
+    </details>
 
 - Append a local `df` to a Notion database:
 

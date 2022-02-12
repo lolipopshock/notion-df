@@ -53,7 +53,7 @@ class TitleValues(BasePropertyValues):
 
     @classmethod
     def from_value(cls, value):
-        return cls(title=[RichText.from_value(value)])
+        return cls(title=RichText.encode_string(value))
         # TODO: Rethink whether we should split input string to multiple elements in the list
 
 
@@ -70,7 +70,7 @@ class RichTextValues(BasePropertyValues):
 
     @classmethod
     def from_value(cls, value: str):
-        return cls(rich_text=[RichText.from_value(value)])
+        return cls(rich_text=RichText.encode_string(value))
 
 
 class NumberValues(BasePropertyValues):

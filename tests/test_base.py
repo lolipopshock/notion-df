@@ -131,3 +131,16 @@ def test_relation():
             NOTION_RELATION_DF,
             resolve_relation_values=False,
         )
+
+def test_long_string():
+    NOTION_LONG_STRING_DF = os.environ.get("NOTION_LONG_STRING_DF")
+    
+    if not NOTION_LONG_STRING_DF or not NOTION_API_KEY:
+        pytest.skip("API key not provided")
+
+    df = download(NOTION_LONG_STRING_DF, api_key=NOTION_API_KEY)
+    assert len(df.iloc[0,1]) == 7721
+
+    upload(df[:1], NOTION_LONG_STRING_DF, api_key=NOTION_API_KEY)
+    df_new = download(NOTION_LONG_STRING_DF, api_key=NOTION_API_KEY)
+    assert len(df.iloc[0,1]) == 7721

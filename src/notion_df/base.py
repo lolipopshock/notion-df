@@ -4,6 +4,7 @@ from pydantic import BaseModel, validator, root_validator
 import pandas as pd
 
 from notion_df.utils import is_time_string, is_uuid
+from notion_df.constants import RICH_TEXT_CONTENT_MAX_LENGTH
 
 ### All colors supported in NOTION
 
@@ -83,6 +84,14 @@ class RichText(BaseRichText):
     def from_value(cls, value: str):
         return cls(text=Text(content=value))
 
+    @classmethod
+    def encode_string(cls, value: str) -> List["RichText"]:
+        chunk_size = RICH_TEXT_CONTENT_MAX_LENGTH
+        return [
+            cls(text=Text(content=value[idx : idx + chunk_size]))
+            for idx in range(0, len(value), chunk_size)
+        ]
+
 
 class Mention(BaseModel):
     pass  # TODO
@@ -143,7 +152,7 @@ class UserObject(BaseModel):
         if v != "user":
             raise ValueError(f"Invalid user object value {v}")
         return v
-    
+
     @property
     def value(self):
         return self.name
@@ -247,10 +256,11 @@ class RollupObject(BaseModel):
 class FileTargetObject(BaseModel):
     url: str
     expiry_time: Optional[str]
-    
+
     @property
     def value(self):
         return self.url
+
 
 class FileObject(BaseModel):
     name: str
@@ -260,12 +270,13 @@ class FileObject(BaseModel):
 
     @property
     def value(self):
-        if self.type == 'file':
+        if self.type == "file":
             if self.file is not None:
                 return self.file.value
         else:
             if self.external is not None:
                 return self.external.value
+
 
 class FormulaObject(BaseModel):
     type: str
@@ -276,9 +287,9 @@ class FormulaObject(BaseModel):
 
     @property
     def value(self):
-        if self.type == 'string':
+        if self.type == "string":
             return self.string
-        elif self.type == 'number':
+        elif self.type == "number":
             return self.number
         elif self.type == "boolean":
             return self.boolean

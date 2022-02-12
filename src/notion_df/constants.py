@@ -1,0 +1,5 @@
+# See https://developers.notion.com/reference/request-limits
+
+RICH_TEXT_CONTENT_MAX_LENGTH = 2000
+RICH_TEXT_LINK_MAX_LENGTH = 1000
+EQUATION_EXPRESSION_MAX_LENGTH = 1000

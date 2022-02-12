@@ -345,9 +345,13 @@ class DatabaseSchema:
         df = df[columns]
         
         df.schema = self
-        df.notion_urls = notion_urls
-        df.notion_ids = notion_ids
-        df.notion_query_results = notion_query_results
+        
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            df.notion_urls = notion_urls
+            df.notion_ids = notion_ids
+            df.notion_query_results = notion_query_results
+
         return df
 
     def is_df_compatible(self, df: "pd.DataFrame") -> bool:

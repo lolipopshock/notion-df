@@ -5,6 +5,8 @@ from notion_df import upload, download
 def read_notion(
     notion_url: str,
     nrows: Optional[int] = None,
+    resolve_relation_values: bool = False,
+    errors: str = "strict",
     api_key: str = None,
 ) -> "pd.DataFrame":
     """Download a Notion database as a pandas DataFrame.
@@ -24,7 +26,13 @@ def read_notion(
     Returns:
         pd.DataFrame: the loaded dataframe.
     """
-    return download(notion_url, nrows=nrows, api_key=api_key)
+    return download(
+        notion_url,
+        nrows=nrows,
+        resolve_relation_values=resolve_relation_values,
+        errors=errors,
+        api_key=api_key,
+    )
 
 
 def to_notion(
@@ -35,6 +43,8 @@ def to_notion(
     title: str = "",
     title_col: str = "",
     errors: str = "strict",
+    resolve_relation_values: bool = False,
+    create_new_rows_in_relation_target: bool = False,
     api_key: str = None,
 ):
 
@@ -86,6 +96,8 @@ def to_notion(
         title=title,
         title_col=title_col,
         errors=errors,
+        resolve_relation_values=resolve_relation_values,
+        create_new_rows_in_relation_target=create_new_rows_in_relation_target,
         api_key=api_key,
     )
 

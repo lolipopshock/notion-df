@@ -3,7 +3,7 @@ from enum import Enum
 from pydantic import BaseModel, validator, root_validator
 import pandas as pd
 
-from notion_df.utils import is_time_string
+from notion_df.utils import is_time_string, is_uuid
 
 ### All colors supported in NOTION
 
@@ -119,6 +119,12 @@ class RelationObject(BaseModel):
     @classmethod
     def from_value(cls, value: str):
         return cls(id=value)
+
+    @validator("id")
+    def id_must_be_uuid(cls, v):
+        if not is_uuid(v):
+            raise ValueError(f"Invalid id {v}")
+        return v
 
 
 class UserObject(BaseModel):

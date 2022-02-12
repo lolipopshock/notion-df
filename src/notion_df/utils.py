@@ -1,9 +1,10 @@
 from typing import List, Dict, Optional, Union, Any
 from datetime import datetime
 from dateutil.parser import parse
+from uuid import UUID
 
 import pandas as pd
-from pandas.api.types import is_array_like, is_datetime64_any_dtype
+from pandas.api.types import is_array_like, is_datetime64_any_dtype, is_list_like
 
 
 def flatten_dict(data: Dict):
@@ -41,6 +42,15 @@ def is_time_string(s: str) -> bool:
         return False
 
 
+def is_uuid(s: str) -> bool:
+    # Kind of an OK solution.. But can be further improved?
+    try:
+        UUID(str(s))
+        return True
+    except ValueError:
+        return False
+
+
 ISO8601_REGEX = r"^(-?(?:[1-9][0-9]*)?[0-9]{4})-(1[0-2]|0[1-9])-(3[01]|0[1-9]|[12][0-9])T(2[0-3]|[01][0-9]):([0-5][0-9]):([0-5][0-9])(\.[0-9]+)?(Z|[+-](?:2[0-3]|[01][0-9]):[0-5][0-9])?$"
 # See https://stackoverflow.com/questions/41129921/validate-an-iso-8601-datetime-string-in-python
 ISO8601_STRFTIME_TRANSFORM = lambda ele: ele.strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -61,6 +71,7 @@ def transform_time(s: Any) -> str:
 
 IDENTITY_TRANSFORM = lambda ele: ele
 SECURE_STR_TRANSFORM = lambda ele: str(ele) if not is_item_empty(ele) else ""
+LIST_TRANSFORM = lambda ele: ele if is_list_like(ele) else [ele]
 REMOVE_EMPTY_STR_TRANSFORM = (
     lambda ele: None if ele == "" or ele is None or pd.isna(ele) else SECURE_STR_TRANSFORM(ele)
 )

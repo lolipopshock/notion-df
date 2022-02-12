@@ -27,6 +27,7 @@ from notion_df.utils import (
     SECURE_STR_TRANSFORM,
     SECURE_BOOL_TRANSFORM,
     SECURE_TIME_TRANSFORM,
+    LIST_TRANSFORM,
 )
 
 
@@ -217,14 +218,15 @@ CONFIGS_MAPPING = {
 }
 
 NON_EDITABLE_TYPES = [
-    "formula", #TODO: Double check for this
-    "files", # According to https://developers.notion.com/reference/file-object#externally-hosted-files-vs-files-hosted-by-notion
+    "formula",  # TODO: Double check for this
+    "files",  # According to https://developers.notion.com/reference/file-object#externally-hosted-files-vs-files-hosted-by-notion
     "created_time",
     "created_by",
     "last_edited_time",
     "last_edited_by",
     "rollup",
 ]
+
 
 def parse_single_config(data: Dict) -> BasePropertyConfig:
     return parse_obj_as(CONFIGS_MAPPING[data["type"]], data)
@@ -235,14 +237,16 @@ CONFIGS_DF_TRANSFORMER = {
     "rich_text": SECURE_STR_TRANSFORM,
     "number": None,
     "select": REMOVE_EMPTY_STR_TRANSFORM,
-    "multi_select": lambda lst: [str(ele) for ele in lst] if is_list_like(lst) else str(lst),
+    "multi_select": lambda lst: [str(ele) for ele in lst]
+    if is_list_like(lst)
+    else str(lst),
     "date": SECURE_TIME_TRANSFORM,
     "checkbox": SECURE_BOOL_TRANSFORM,
-    ### Notion-specific Properties ### 
-    # Currently we don't automatically convert these properties  
+    ### Notion-specific Properties ###
+    # Currently we don't automatically convert these properties
     # We assume the users will use the correct type and we don't need to perform any transformation
     "people": IDENTITY_TRANSFORM,
-    "relation": IDENTITY_TRANSFORM,
+    "relation": LIST_TRANSFORM,
     "url": REMOVE_EMPTY_STR_TRANSFORM,
     "email": REMOVE_EMPTY_STR_TRANSFORM,
     ### TODO: check the following ###
@@ -318,8 +322,33 @@ class DatabaseSchema:
             configs[title_col] = TitleConfig()
         else:
             configs[df.columns[0]] = TitleConfig()
-        
+
         return cls(configs)
+
+    @property
+    def title_column(self) -> Optional[str]:
+        for key, config in self.configs.items():
+            if isinstance(config, TitleConfig) or config.type == "title":
+                # TODO: Rethink this
+                return key
+
+    def create_df(self, df) -> "pd.DataFrame":
+        
+        notion_urls = df.notion_urls
+        notion_ids = df.notion_ids
+        notion_query_results = df.notion_query_results
+
+        df = df.copy()
+        # Ensure the column integrity
+        # See the issue mentioned in https://github.com/lolipopshock/notion-df/issues/17
+        columns = [col for col in df.columns if col in self.configs]
+        df = df[columns]
+        
+        df.schema = self
+        df.notion_urls = notion_urls
+        df.notion_ids = notion_ids
+        df.notion_query_results = notion_query_results
+        return df
 
     def is_df_compatible(self, df: "pd.DataFrame") -> bool:
         """Validate the dataframe against the schema"""
@@ -330,7 +359,7 @@ class DatabaseSchema:
 
             # TODO: There might miss one thing: if the rollup is not configured
             # the database reterive result will be empty for that column.
-            # But the database query will return the value for that column 
+            # But the database query will return the value for that column
             # (even if that's empty). So this would miss this check...
         else:
             for col in df.columns:
@@ -340,7 +369,9 @@ class DatabaseSchema:
         # TODO: Add more advanced check on datatypes
         return True
 
-    def transform(self, df: "pd.DataFrame", remove_non_editables=False) -> "pd.DataFrame":
+    def transform(
+        self, df: "pd.DataFrame", remove_non_editables=False
+    ) -> "pd.DataFrame":
         """Transform the df such that the data values are compatible with the schema.
         It assumes the df has already been validated against the schema.
         """
@@ -348,8 +379,8 @@ class DatabaseSchema:
         used_columns = []
         for col in df.columns:
             if self[col].type in NON_EDITABLE_TYPES:
-                continue # Skip non-editable columns
-            
+                continue  # Skip non-editable columns
+
             transform = CONFIGS_DF_TRANSFORMER[self[col].type]
             if transform is not None:
                 df[col] = df[col].apply(transform)

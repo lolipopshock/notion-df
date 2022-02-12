@@ -60,6 +60,7 @@ def test_formula():
 
     df = download(NOTION_FORMULA_DF, api_key=NOTION_API_KEY)
 
+
 def test_relation():
     NOTION_RELATION_DF = os.environ.get("NOTION_RELATION_DF")
     NOTION_RELATION_TARGET_DF = os.environ.get("NOTION_RELATION_TARGET_DF")
@@ -69,57 +70,64 @@ def test_relation():
 
     # download: resolve
     # upload: resolve
-    df = download(NOTION_RELATION_DF, 
-        api_key=NOTION_API_KEY,
-        resolve_relation_values=True)
+    df = download(
+        NOTION_RELATION_DF, api_key=NOTION_API_KEY, resolve_relation_values=True
+    )
     df_target = download(NOTION_RELATION_TARGET_DF, api_key=NOTION_API_KEY)
 
+    assert "private_page" not in df.columns
+    # See https://github.com/lolipopshock/notion-df/issues/17
+
     ## witout a new key
-    upload(df[:1], 
+    upload(
+        df[:1],
         NOTION_RELATION_DF,
-        resolve_relation_values=True, 
-        create_new_rows_in_relation_target=True
+        resolve_relation_values=True,
+        create_new_rows_in_relation_target=True,
     )
     df_target_new = download(NOTION_RELATION_TARGET_DF, api_key=NOTION_API_KEY)
     assert len(df_target_new) == len(df_target)
 
     ## with a new key
     rint = random.randint(0, 100000)
-    df.at[0, 'Related to Tasks'] = [f"test {rint}"]
-    upload(df[:1], 
+    df.at[0, "Related to Tasks"] = [f"test {rint}"]
+    upload(
+        df[:1],
         NOTION_RELATION_DF,
-        resolve_relation_values=True, 
-        create_new_rows_in_relation_target=True
+        resolve_relation_values=True,
+        create_new_rows_in_relation_target=True,
     )
     df_target_new = download(NOTION_RELATION_TARGET_DF, api_key=NOTION_API_KEY)
     assert len(df_target_new) == len(df_target) + 1
-    df_target_new.iloc[-1]['name'] == f"test {rint}"
+    df_target_new.iloc[-1]["name"] == f"test {rint}"
 
     # download: not-resolve
     # upload: resolve
     # Avoids creating new rows for uuid only lists
-    df = download(NOTION_RELATION_DF, 
-        api_key=NOTION_API_KEY,
-        resolve_relation_values=False)
+    df = download(
+        NOTION_RELATION_DF, api_key=NOTION_API_KEY, resolve_relation_values=False
+    )
     df_target = download(NOTION_RELATION_TARGET_DF, api_key=NOTION_API_KEY)
 
-    upload(df[:1], 
+    upload(
+        df[:1],
         NOTION_RELATION_DF,
-        resolve_relation_values=True, 
-        create_new_rows_in_relation_target=True
+        resolve_relation_values=True,
+        create_new_rows_in_relation_target=True,
     )
     df_target_new = download(NOTION_RELATION_TARGET_DF, api_key=NOTION_API_KEY)
     assert len(df_target_new) == len(df_target)
 
     # download: resolve
     # upload: not-resolve
-    # Raises error 
-    df = download(NOTION_RELATION_DF, 
-        api_key=NOTION_API_KEY,
-        resolve_relation_values=True)
+    # Raises error
+    df = download(
+        NOTION_RELATION_DF, api_key=NOTION_API_KEY, resolve_relation_values=True
+    )
 
     with pytest.raises(ValidationError):
-        upload(df[:1], 
+        upload(
+            df[:1],
             NOTION_RELATION_DF,
-            resolve_relation_values=False, 
+            resolve_relation_values=False,
         )

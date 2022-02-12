@@ -180,7 +180,7 @@ def download_df_from_database(
         downloaded_rows.extend(query_results["results"])
 
     df = load_df_from_queries(downloaded_rows)
-    df.schema = schema
+    df = schema.create_df(df)
     return df
 
 

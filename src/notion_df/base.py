@@ -68,7 +68,7 @@ class BaseRichText(BaseModel):
 
 
 class Link(BaseModel):
-    type: str
+    type: Optional[str] = "url"
     url: str
 
 

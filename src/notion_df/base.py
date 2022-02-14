@@ -50,53 +50,6 @@ class RichTextTypeEnum(str, Enum):
     Equation = "equation"
 
 
-class Annotation(BaseModel):
-    bold: bool
-    italic: bool
-    strikethrough: bool
-    underline: bool
-    code: bool
-    color: NotionExtendedColorEnum
-
-
-class BaseRichText(BaseModel):
-    plain_text: Optional[str]
-    # TODO: The Optional[plain_text] is used when creating property values
-    href: Optional[str] = None
-    annotations: Optional[Annotation] = None
-    type: Optional[RichTextTypeEnum]
-
-
-class Link(BaseModel):
-    type: Optional[str] = "url"
-    url: str
-
-
-class Text(BaseModel):
-    content: str
-    link: Optional[Link]
-
-
-class RichText(BaseRichText):
-    text: Text
-
-    @classmethod
-    def from_value(cls, value: str):
-        return cls(text=Text(content=value))
-
-    @classmethod
-    def encode_string(cls, value: str) -> List["RichText"]:
-        chunk_size = RICH_TEXT_CONTENT_MAX_LENGTH
-        return [
-            cls(text=Text(content=value[idx : idx + chunk_size]))
-            for idx in range(0, len(value), chunk_size)
-        ]
-
-
-class Mention(BaseModel):
-    pass  # TODO
-
-
 class SelectOption(BaseModel):
     id: Optional[str]
     name: str
@@ -296,3 +249,73 @@ class FormulaObject(BaseModel):
         elif self.type == "date":
             if self.date is not None:
                 return self.date.value
+
+
+class AnnotationObject(BaseModel):
+    bold: bool
+    italic: bool
+    strikethrough: bool
+    underline: bool
+    code: bool
+    color: NotionExtendedColorEnum
+
+
+class TextLinkObject(BaseModel):
+    type: Optional[str] = "url"
+    url: str
+
+
+class TextObject(BaseModel):
+    content: str
+    link: Optional[TextLinkObject]
+
+
+class PageReferenceObject(BaseModel):
+    id: str
+
+
+class LinkPreviewMentionObject(BaseModel):
+    url: str
+
+
+class MentionObject(BaseModel):
+    type: str
+    user: Optional[UserObject]
+    page: Optional[PageReferenceObject]
+    database: Optional[PageReferenceObject]
+    date: Optional[DateObject]
+    link_preview: Optional[LinkPreviewMentionObject]
+
+
+class EquationObject(BaseModel):
+    expression: str
+
+
+class BaseRichTextObject(BaseModel):
+    plain_text: Optional[str]
+    # TODO: The Optional[plain_text] is used when creating property values
+    href: Optional[str] = None
+    annotations: Optional[AnnotationObject] = None
+    type: Optional[RichTextTypeEnum]
+    
+    @property
+    def value(self):
+        return self.plain_text
+
+
+class RichTextObject(BaseRichTextObject):
+    text: Optional[TextObject]
+    mention: Optional[MentionObject]
+    equation: Optional[EquationObject]
+
+    @classmethod
+    def from_value(cls, value: str):
+        return cls(text=TextObject(content=value))
+
+    @classmethod
+    def encode_string(cls, value: str) -> List["RichTextObject"]:
+        chunk_size = RICH_TEXT_CONTENT_MAX_LENGTH
+        return [
+            cls(text=TextObject(content=value[idx : idx + chunk_size]))
+            for idx in range(0, len(value), chunk_size)
+        ]

@@ -10,7 +10,7 @@ import pandas as pd
 from pandas.api.types import is_array_like
 
 from notion_df.base import (
-    RichText,
+    RichTextObject,
     SelectOption,
     DateObject,
     RelationObject,
@@ -41,36 +41,36 @@ class BasePropertyValues(BaseModel):
 
 
 class TitleValues(BasePropertyValues):
-    title: List[RichText]
+    title: List[RichTextObject]
 
     @property
     def value(self) -> Optional[str]:
         return (
             None
             if len(self.title) == 0
-            else " ".join([text.plain_text for text in self.title])
+            else " ".join([text.value for text in self.title])
         )
 
     @classmethod
     def from_value(cls, value):
-        return cls(title=RichText.encode_string(value))
+        return cls(title=RichTextObject.encode_string(value))
         # TODO: Rethink whether we should split input string to multiple elements in the list
 
 
 class RichTextValues(BasePropertyValues):
-    rich_text: List[RichText]
+    rich_text: List[RichTextObject]
 
     @property
     def value(self) -> Optional[str]:
         return (
             None
             if len(self.rich_text) == 0
-            else " ".join([text.plain_text for text in self.rich_text])
+            else " ".join([text.value for text in self.rich_text])
         )
 
     @classmethod
     def from_value(cls, value: str):
-        return cls(rich_text=RichText.encode_string(value))
+        return cls(rich_text=RichTextObject.encode_string(value))
 
 
 class NumberValues(BasePropertyValues):

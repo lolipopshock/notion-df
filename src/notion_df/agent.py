@@ -1,4 +1,4 @@
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Union, Tuple
 from datetime import datetime
 import warnings
 import os
@@ -234,7 +234,7 @@ def create_database(
     return response
 
 
-def upload_row_to_database(row, database_id, schema, client):
+def upload_row_to_database(row, database_id, schema, client) -> Dict:
 
     properties = PageProperty.from_series(row, schema).query_dict()
     response = client.pages.create(
@@ -243,7 +243,7 @@ def upload_row_to_database(row, database_id, schema, client):
     return response
 
 
-def upload_to_database(df, databse_id, schema, client, errors):
+def upload_to_database(df, databse_id, schema, client, errors) -> List[Dict]:
     all_response = []
     for _, row in df[::NOT_REVERSE_DATAFRAME].iterrows():
         try:
@@ -276,10 +276,11 @@ def upload(
     errors: str = "strict",
     resolve_relation_values: bool = False,
     create_new_rows_in_relation_target: bool = False,
+    return_response: bool = False,
     *,
     api_key: str = None,
     client: Client = None,
-):
+) -> Union[str, Tuple[str, List[Dict]]]:
     """Upload a dataframe to the specified Notion database.
 
     Args:
@@ -326,6 +327,9 @@ def upload(
             If True, then notion-df will try to create new rows in the target
             the relation table if the relation column value is not found there.
             Defaults to False.
+        return_response (bool, optional):
+            If True, then the function will return a list of responses for
+            the updates from Notion.
         api_key (str, optional):
             The API key of the Notion integration.
             Defaults to None.
@@ -427,7 +431,9 @@ def upload(
                         lambda row: [obj_string_to_id[ele] for ele in row if ele in obj_string_to_id]
                     )
 
-    upload_to_database(df, databse_id, schema, client, errors)
+    response = upload_to_database(df, databse_id, schema, client, errors)
 
     print(f"Your dataframe has been uploaded to the Notion page: {notion_url} .")
+    if return_response:
+        return notion_url, response
     return notion_url

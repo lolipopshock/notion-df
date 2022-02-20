@@ -55,6 +55,7 @@ def to_notion(
     errors: str = "strict",
     resolve_relation_values: bool = False,
     create_new_rows_in_relation_target: bool = False,
+    return_response: bool = False,
     api_key: str = None,
 ):
 
@@ -104,6 +105,9 @@ def to_notion(
             If True, then notion-df will try to create new rows in the target
             the relation table if the relation column value is not found there.
             Defaults to False.
+        return_response (bool, optional):
+            If True, then the function will return a list of responses for
+            the updates from Notion.
         api_key (str, optional):
             The API key of the Notion integration.
             Defaults to None.
@@ -119,6 +123,7 @@ def to_notion(
         errors=errors,
         resolve_relation_values=resolve_relation_values,
         create_new_rows_in_relation_target=create_new_rows_in_relation_target,
+        return_response=return_response,
         api_key=api_key,
     )
 

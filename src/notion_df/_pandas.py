@@ -17,11 +17,21 @@ def read_notion(
         nrows (int, optional):
             Number of rows of file to read. Useful for reading
             pieces of large files.
+        resolve_relation_values (bool, optional):
+            By default, when downloading relation columns, notion-df
+            will just download the object ids. If set `resolve_relation_values`
+            to `True`, notion-df will try to pull the values of the title 
+            column from the target table and map the object ids to those values.
+            Defaults to False.  
+        errors (str, optional):
+            You can specify how to handle errors during downloading. There
+            are several options:
+                1. "strict": raise an error when there is one.
+                2. "ignore": ignore errors.
+                3. "warn": print the error message.
+            Defaults to "strict".
         api_key (str, optional):
             The API key of the Notion integration.
-            Defaults to None.
-        client (Client, optional):
-            The notion client.
             Defaults to None.
     Returns:
         pd.DataFrame: the loaded dataframe.
@@ -83,6 +93,17 @@ def to_notion(
                     subsequent rows.
                 3. "warn": print the error message and continue uploading
             Defaults to "strict".
+        resolve_relation_values (bool, optional):
+            If `True`, notion-df assumes the items in any relation columns
+            are not notion object ids, but the value of the corresponding 
+            "title column" in the target table. It will try to convert the 
+            relation column to notion object ids by looking up the value. 
+            Defaults to False.
+        create_new_rows_in_relation_target (bool, optional):
+            This argument is used in conjunction with `resolve_relation_values`.
+            If True, then notion-df will try to create new rows in the target
+            the relation table if the relation column value is not found there.
+            Defaults to False.
         api_key (str, optional):
             The API key of the Notion integration.
             Defaults to None.

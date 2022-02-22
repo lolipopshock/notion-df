@@ -19,7 +19,10 @@ from notion_df.base import (
     FileObject,
     FormulaObject
 )
-from notion_df.utils import flatten_dict
+from notion_df.utils import (
+    flatten_dict,
+    is_list_like
+)
 
 
 class BasePropertyValues(BaseModel):
@@ -106,7 +109,7 @@ class MultiSelectValues(BasePropertyValues):
 
     @classmethod
     def from_value(cls, values: Union[List[str], str]):
-        if isinstance(values, list):
+        if is_list_like(values):
             return cls(
                 multi_select=[SelectOption.from_value(value) for value in values]
             )
@@ -143,7 +146,7 @@ class RelationValues(BasePropertyValues):
 
     @classmethod
     def from_value(cls, values: Union[List[str], str]):
-        if isinstance(values, list):
+        if is_list_like(values):
             return cls(relation=[RelationObject.from_value(value) for value in values])
         else:
             return cls(relation=[RelationObject.from_value(values)])
@@ -158,7 +161,7 @@ class PeopleValues(BasePropertyValues):
 
     @classmethod
     def from_value(cls, values: Union[List[str], str]):
-        if isinstance(values, list):
+        if is_list_like(values):
             return cls(people=[UserObject.from_value(value) for value in values])
         else:
             return cls(people=[UserObject.from_value(values)])

@@ -297,7 +297,7 @@ class BaseRichTextObject(BaseModel):
     href: Optional[str] = None
     annotations: Optional[AnnotationObject] = None
     type: Optional[RichTextTypeEnum]
-    
+
     @property
     def value(self):
         return self.plain_text
@@ -319,3 +319,8 @@ class RichTextObject(BaseRichTextObject):
             cls(text=TextObject(content=value[idx : idx + chunk_size]))
             for idx in range(0, len(value), chunk_size)
         ]
+
+
+class EmojiObject(BaseModel):
+    type: str = "emoji"
+    emoji: str

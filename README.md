@@ -1,6 +1,6 @@
 # `notion-df`: Seamlessly Connecting Notion Database with Pandas DataFrame
 
-*Please Note: This project is currently in pre-alpha stage. The code are not appropriately documented and tested. Please report any issues you find.*
+*Please Note: This project is currently in pre-alpha stage. The code are not appropriately documented and tested. Please report any issues you find. Thanks!*
 
 ## Installation
 
@@ -82,6 +82,32 @@ pip install notion-df
     notion_df.upload(df, notion_page_url, title="page-title")
     # Similarly in pandas APIs: df.to_notion(notion_page_url, title="page-title")
     ```
+
+## Development 
+
+1. Clone the repo and install the dependencies:
+    ```bash
+    git clone git@github.com:lolipopshock/notion-df.git
+    cd notion-df
+    pip install -e .[dev]
+    ```
+2. How to run tests?
+    ```bash
+    NOTION_API_KEY="<the-api-key>" pytest tests/
+    ```
+    The tests are dependent on a list of notebooks, specified by the following environment variables:
+    
+| Environment Variable        | Description                             |
+| --------------------------- | --------------------------------------- |
+| `NOTION_API_KEY`            | The API key for your Notion integration |
+| `NOTION_ROLLUP_DF`          | -                                       |
+| `NOTION_FILES_DF`           | -                                       |
+| `NOTION_FORMULA_DF`         | -                                       |
+| `NOTION_RELATION_DF`        | -                                       |
+| `NOTION_RELATION_TARGET_DF` | -                                       |
+| `NOTION_LONG_STRING_DF`     | -                                       |
+| `NOTION_RICH_TEXT_DF`       | -                                       |
+    
 
 ## TODOs
 

@@ -12,6 +12,7 @@ from notion_client.helpers import get_id
 from notion_df.values import PageProperties, PageProperty
 from notion_df.configs import DatabaseSchema, NON_EDITABLE_TYPES
 from notion_df.utils import is_uuid
+from notion_df.blocks import parse_blocks
 
 API_KEY = None
 NOT_REVERSE_DATAFRAME = -1
@@ -437,3 +438,25 @@ def upload(
     if return_response:
         return notion_url, response
     return notion_url
+
+@use_client
+def download_page_children(
+    notion_url: str,
+    api_key: str = None,
+    client: Client = None,   
+):
+    """Download the children of a Notion page.
+
+    Args:
+        notion_url (str):
+            The url of the Notion page.
+        api_key (str, optional):
+            The API key of the Notion integration.
+            Defaults to None.
+        client (Client, optional):
+            The notion client.
+            Defaults to None.
+    """
+    page_id = get_id(notion_url)
+    r = client.blocks.children.list(block_id=page_id)
+    return parse_blocks(r['results'], recursive=True, client=client)

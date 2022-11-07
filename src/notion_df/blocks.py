@@ -1,4 +1,7 @@
+import warnings
 from typing import List, Union, Dict, Any, Tuple, Optional, Union
+
+from notion_client import Client
 from pydantic import BaseModel, parse_obj_as, validator, root_validator
 
 from notion_df.base import (
@@ -86,9 +89,9 @@ class EmbedBlockAttributes(BaseModel):
     url: str
 
 
-class ImageBlockAttributes(BaseModel):
-    image: FileObject
-
+class ImageBlockAttributes(FileObject):
+    caption: Optional[List[RichTextObject]]
+    # This is not listed in the docs, but it is in the API response (Nov 2022)
 
 class VideoBlockAttributes(BaseModel):
     video: FileObject
@@ -268,5 +271,27 @@ BLOCKS_MAPPING = {
 }
 
 
-def parse_block(data: Dict):
+def parse_one_block(data: Dict) -> BaseNotionBlock:
+    if data["type"] not in BLOCKS_MAPPING:
+        warnings.warn(f"Unknown block type: {data['type']}")
+        return None
+
     return parse_obj_as(BLOCKS_MAPPING[data["type"]], data)
+
+
+def parse_blocks(
+    data: List[Dict], recursive: bool = False, client: Client = None
+) -> List[BaseNotionBlock]:
+    all_blocks = []
+    for block_data in data:
+        block = parse_one_block(block_data)
+        if block.has_children and recursive and client:
+            block.set_children(
+                parse_blocks(
+                    client.blocks.children.list(block_id=block.id)["results"],
+                    recursive=recursive,
+                    client=client,
+                )
+            )
+        all_blocks.append(block)
+    return all_blocks

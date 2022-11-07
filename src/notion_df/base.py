@@ -216,7 +216,7 @@ class FileTargetObject(BaseModel):
 
 
 class FileObject(BaseModel):
-    name: str
+    name: Optional[str] #TODO: Figure out why this is not required...
     type: str
     file: Optional[FileTargetObject]
     external: Optional[FileTargetObject]

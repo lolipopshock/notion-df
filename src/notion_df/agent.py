@@ -11,8 +11,8 @@ from notion_client.helpers import get_id
 
 from notion_df.values import PageProperties, PageProperty
 from notion_df.configs import DatabaseSchema, NON_EDITABLE_TYPES
-from notion_df.utils import is_uuid
-from notion_df.blocks import parse_blocks
+from notion_df.utils import is_uuid, flatten_dict
+from notion_df.blocks import parse_blocks, BaseNotionBlock
 
 API_KEY = None
 NOT_REVERSE_DATAFRAME = -1
@@ -235,20 +235,36 @@ def create_database(
     return response
 
 
-def upload_row_to_database(row, database_id, schema, client) -> Dict:
+def upload_row_to_database(row, database_id, schema, children, client) -> Dict:
 
     properties = PageProperty.from_series(row, schema).query_dict()
-    response = client.pages.create(
-        parent={"database_id": database_id}, properties=properties
-    )
+    if children:
+        if not isinstance(children, list):
+            children = [children]
+        for cid in range(len(children)):
+            if isinstance(children[cid], BaseNotionBlock):
+                children[cid] = flatten_dict(children[cid].dict())
+                
+        response = client.pages.create(
+            parent={"database_id": database_id}, properties=properties, children=children
+        )
+    else:
+        response = client.pages.create(
+            parent={"database_id": database_id}, properties=properties,
+        )
     return response
 
 
-def upload_to_database(df, databse_id, schema, client, errors) -> List[Dict]:
+def upload_to_database(df, databse_id, schema, client, errors, children) -> List[Dict]:
     all_response = []
-    for _, row in df[::NOT_REVERSE_DATAFRAME].iterrows():
+    if children is not None:
+        assert len(children) == len(df)
+        children = children[::NOT_REVERSE_DATAFRAME]
+
+    for idx, (_, row) in enumerate(df[::NOT_REVERSE_DATAFRAME].iterrows(), ):
         try:
-            response = upload_row_to_database(row, databse_id, schema, client)
+            child = children[idx] if children is not None else None
+            response = upload_row_to_database(row, databse_id, schema, child, client)
             all_response.append(response)
         except Exception as e:
             if errors == "strict":
@@ -277,6 +293,7 @@ def upload(
     errors: str = "strict",
     resolve_relation_values: bool = False,
     create_new_rows_in_relation_target: bool = False,
+    children: List[Union[Dict, BaseNotionBlock]] = None,
     return_response: bool = False,
     *,
     api_key: str = None,
@@ -317,6 +334,9 @@ def upload(
                     subsequent rows.
                 3. "warn": print the error message and continue uploading
             Defaults to "strict".
+        children (List[Union[Dict, BaseNotionBlock]], optional):
+            The corresponding children of the uploaded Notion page. It should be
+            a list of the same length as the dataframe.
         resolve_relation_values (bool, optional):
             If `True`, notion-df assumes the items in any relation columns
             are not notion object ids, but the value of the corresponding 
@@ -432,7 +452,7 @@ def upload(
                         lambda row: [obj_string_to_id[ele] for ele in row if ele in obj_string_to_id]
                     )
 
-    response = upload_to_database(df, databse_id, schema, client, errors)
+    response = upload_to_database(df, databse_id, schema, client, errors, children)
 
     print(f"Your dataframe has been uploaded to the Notion page: {notion_url} .")
     if return_response:

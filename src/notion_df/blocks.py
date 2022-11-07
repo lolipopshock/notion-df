@@ -26,25 +26,9 @@ class ParentObject(BaseModel):
     block_id: Optional[str]
 
 
-class BaseNotionBlock(BaseModel):
-    object: str = "block"
-    parent: ParentObject
-    id: Optional[str]
-    type: Optional[str]
-    created_time: str
-    # created_by
-    last_edited_time: str
-    # created_by
-    has_children: bool
-    archived: bool
-    type: str
-
-    @property
-    def children(self):
-        return self.__getattribute__(self.type).children
-
-    def set_children(self, value: Any):
-        self.__getattribute__(self.type).children = value
+# BaseClasses
+class BaseAttributes(BaseModel):
+    pass
 
 
 class BaseAttributeWithChildren(BaseModel):
@@ -75,58 +59,87 @@ class ToDoBlockAttributes(BaseAttributeWithChildren):
     checked: Optional[bool]
 
 
-class CodeBlockAttributes(BaseModel):
+class CodeBlockAttributes(BaseAttributes):
     rich_text: List[RichTextObject]
     caption: Optional[List[RichTextObject]]
     language: Optional[str]  # TODO: it's actually an enum
 
 
-class ChildPageAttributes(BaseModel):
+class ChildPageAttributes(BaseAttributes):
     title: List[RichTextObject]
 
 
-class EmbedBlockAttributes(BaseModel):
+class EmbedBlockAttributes(BaseAttributes):
     url: str
 
 
-class ImageBlockAttributes(FileObject):
+class ImageBlockAttributes(BaseAttributes, FileObject):
     caption: Optional[List[RichTextObject]]
     # This is not listed in the docs, but it is in the API response (Nov 2022)
 
-class VideoBlockAttributes(BaseModel):
+
+class VideoBlockAttributes(BaseAttributes):
     video: FileObject
 
 
-class FileBlockAttributes(BaseModel):
+class FileBlockAttributes(BaseAttributes):
     file: FileObject
     caption: Optional[List[RichTextObject]]
 
 
-class PdfBlockAttributes(BaseModel):
+class PdfBlockAttributes(BaseAttributes):
     pdf: FileObject
 
 
-class BookmarkBlockAttributes(BaseModel):
+class BookmarkBlockAttributes(BaseAttributes):
     url: str
     caption: Optional[List[RichTextObject]]
 
 
-class EquationBlockAttributes(BaseModel):
+class EquationBlockAttributes(BaseAttributes):
     expression: str
 
 
-class TableOfContentsAttributes(BaseModel):
+class TableOfContentsAttributes(BaseAttributes):
     color: Optional[NotionExtendedColorEnum]
 
 
-class LinkPreviewAttributes(BaseModel):
+class LinkPreviewAttributes(BaseAttributes):
     url: str
 
 
-class LinkToPageAttributes(BaseModel):
+class LinkToPageAttributes(BaseAttributes):
     type: str
     page_id: Optional[str]
     database_id: Optional[str]
+
+
+ATTRIBUTES_MAPPING = {
+    _cls.__name__: _cls
+    for _cls in BaseAttributes.__subclasses__()
+    + BaseAttributeWithChildren.__subclasses__()
+}
+
+
+class BaseNotionBlock(BaseModel):
+    object: str = "block"
+    parent: Optional[ParentObject]
+    id: Optional[str]
+    type: Optional[str]
+    created_time: Optional[str]
+    # created_by
+    last_edited_time: Optional[str]
+    # created_by
+    has_children: Optional[bool]
+    archived: Optional[bool]
+    type: str
+
+    @property
+    def children(self):
+        return self.__getattribute__(self.type).children
+
+    def set_children(self, value: Any):
+        self.__getattribute__(self.type).children = value
 
 
 class ParagraphBlock(BaseNotionBlock):
